@@ -3,9 +3,10 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node.js CI](https://img.shields.io/badge/node-%3E=18-blue.svg)](https://nodejs.org/)
 [![AEM Compatible](https://img.shields.io/badge/aem-6.5%2B-blue.svg)](https://www.adobe.com/marketing-cloud/experience-manager.html)
-[![ChatOps](https://img.shields.io/badge/chatops-telegram-blue.svg)](https://telegram.org/)
 
-AEM MCP Server is a full-featured, extensible Model Context Protocol (MCP) server for Adobe Experience Manager (AEM). It provides a robust REST/JSON-RPC API for content, component, and asset management, with advanced integrations for AI, chatbots, and automation. This project is designed for AEM developers, content teams, and automation engineers who want to manage AEM programmatically or via natural language.
+AEM MCP Server is a full-featured, extensible Model Context Protocol (MCP) server for Adobe Experience Manager (AEM). 
+It provides a robust REST/JSON-RPC API for content, component, and asset management, with advanced integrations for AI, chatbots, and automation. 
+This project is designed for AEM developers, content teams, and automation engineers who want to manage AEM programmatically or via natural language.
 
 ---
 
@@ -109,7 +110,6 @@ Create a `.env` file in the project root with the following (edit as needed):
 AEM_HOST=http://localhost:4502
 AEM_SERVICE_USER=admin
 AEM_SERVICE_PASSWORD=admin
-MCP_PORT=8080
 SERVER_PORT=3000
 MCP_USERNAME=admin
 MCP_PASSWORD=admin
@@ -124,7 +124,7 @@ Sample for AI-based code editors or custom clients:
     "aem-mcp": {
       "command": "node",
       "args": [
-        "absolute path to dist/mcp-server.js"
+        "absolute path to dist/index.js"
       ]
     }
   }
@@ -137,7 +137,6 @@ Sample for AI-based code editors or custom clients:
 - **REST/JSON-RPC**: Exposes all AEM operations via HTTP endpoints
 - **Supported Operations**: Page/asset CRUD, component validation/update, search, rollout, publish, text/image extraction, and more
 - **AI/LLM**: Send natural language commands to the server (via API or Telegram)
-- **Telegram Bot**: Connect your bot using `TELEGRAM_BOT_TOKEN` and chat with your AEM instance
 
 ---
 
@@ -152,8 +151,8 @@ AEM MCP Server is compatible with modern AI IDEs and code editors that support M
    - Add a new server with:
      - **Type:** Custom MCP
      - **Command:** `node`
-     - **Args:** `["/absolute/path/to/dist/mcp-server.js"]`
-     - **Port:** `8080` (or as configured)
+     - **Args:** `["/absolute/path/to/dist/index.js"]`
+     - **Port:** `3000` (or as configured)
      - **Auth:** Use `MCP_USERNAME`/`MCP_PASSWORD` from your `.env`
 3. **Restart your IDE** and connect. The IDE will now be able to:
    - List, search, and manage AEM content
@@ -183,7 +182,6 @@ AEM MCP Server is compatible with modern AI IDEs and code editors that support M
 
 ## Integrations
 - **AI/LLM**: OpenAI, Anthropic, Ollama, custom HTTP APIs
-- **Telegram**: Chat-based AEM management
 
 ---
 
