@@ -1,31 +1,44 @@
 {
-  "name": "aem-mcp-agent",
+  "name": "aem-mcp-server",
   "version": "1.0.0",
-  "description": "AEM Model Context Protocol (MCP) server with LLM and Telegram integration (TypeScript clone)",
+  "description": "AEM Model Context Protocol (MCP) server",
   "main": "dist/index.js",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/easingthemes/aem-mcp-server"
+  },
+  "keywords": [
+    "AEM", "MCP", "Model Context Protocol", "LLM", "Adobe Experience Manager", "TypeScript"
+  ],
   "scripts": {
+    "start2": "node ./dist/index.js",
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev src/index.ts",
     "mcp": "node dist/mcp-server.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.19.0",
-    "@modelcontextprotocol/sdk": "^1.15.0",
+    "@modelcontextprotocol/sdk": "^1.16.0",
     "axios": "^1.6.7",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.2",
-    "openai": "^4.30.0",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "tsx": "^4.20.3",
+    "zod": "^4.0.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/node": "^24.0.14",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   },

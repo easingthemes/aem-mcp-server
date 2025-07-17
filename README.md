@@ -30,7 +30,6 @@ AEM MCP Server is a full-featured, extensible Model Context Protocol (MCP) serve
 - **Modern, TypeScript-based AEM MCP server**
 - **REST/JSON-RPC API** for AEM content, component, and asset operations
 - **AI/LLM integration** (OpenAI, Anthropic, Ollama, custom HTTP APIs)
-- **Telegram bot** for conversational AEM management
 - **Production-ready, modular, and extensible**
 
 ---
@@ -111,9 +110,7 @@ AEM_HOST=http://localhost:4502
 AEM_SERVICE_USER=admin
 AEM_SERVICE_PASSWORD=admin
 MCP_PORT=8080
-GATEWAY_PORT=3000
-OPENAI_API_KEY=your-openai-key
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+SERVER_PORT=3000
 MCP_USERNAME=admin
 MCP_PASSWORD=admin
 ```
