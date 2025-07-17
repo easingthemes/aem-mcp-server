@@ -1,5 +1,4 @@
-import { startGateway } from './gateway.js';
+import { config } from './config.js';
+import { startServer } from './server/app.server.js';
 
-(async () => {
-  await startGateway();
-})(); 
+startServer(config.SERVER_PORT);
