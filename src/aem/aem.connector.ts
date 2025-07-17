@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import dotenv from 'dotenv';
-import { getAEMConfig, isValidContentPath, isValidComponentType, isValidLocale, AEMConfig } from './aem-config.js';
+import { getAEMConfig, isValidContentPath, isValidComponentType, isValidLocale, AEMConfig } from './aem.config.js';
 import {
   AEMOperationError,
   createAEMError,
@@ -9,7 +9,7 @@ import {
   validateComponentOperation,
   createSuccessResponse,
   AEM_ERROR_CODES
-} from './error-handler.js';
+} from './aem.errors.js';
 
 dotenv.config();
 
@@ -92,7 +92,7 @@ export class AEMConnector {
       const client = this.createAxiosInstance();
       const response = await client.get('/libs/granite/core/content/login.html', {
         timeout: 5000,
-        validateStatus: (status) => status < 500,
+        validateStatus: (status: number) => status < 500,
       });
       // eslint-disable-next-line no-console
       console.log('✅ AEM connection successful! Status:', response.status);
@@ -899,4 +899,4 @@ export class AEMConnector {
       };
     }, 'getNodeContent');
   }
-} 
+}

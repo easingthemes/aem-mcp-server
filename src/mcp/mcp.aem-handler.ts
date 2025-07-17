@@ -1,4 +1,5 @@
-import { AEMConnector } from './aem-connector.js';
+import { AEMConnector } from '../aem/aem.connector.js';
+import { config } from '../config.js';
 
 export class MCPRequestHandler {
   aemConnector: AEMConnector;
@@ -142,4 +143,16 @@ export class MCPRequestHandler {
       { name: 'getTemplateStructure', description: 'Get detailed structure of a specific template', parameters: ['templatePath'] },
     ];
   }
-} 
+
+  async handleHealthCheck() {
+    const aemConnected = await this.aemConnector.testConnection();
+    return {
+      status: 'healthy',
+      aem: aemConnected ? 'connected' : 'disconnected',
+      mcp: 'ready',
+      timestamp: new Date().toISOString(),
+      version: config.APP_VERSION || '1.0.0',
+      port: config.SERVER_PORT,
+    };
+  }
+}
