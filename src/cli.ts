@@ -10,11 +10,11 @@ type CliArgs = CliParams & {
 };
 
 const argv: CliArgs = yargs(hideBin(process.argv)).options({
-  host: { type: 'string', default: 'http://localhost:4502' },
-  user: { type: 'string', default: 'admin' },
-  pass: { type: 'string', default: 'admin' },
-  mcpPort: { type: 'number', default: 3000 },
-  explorer: { type: 'boolean', default: false },
+  host: { type: 'string', default: 'http://localhost:4502', alias: 'H' },
+  user: { type: 'string', default: 'admin', alias: 'u' },
+  pass: { type: 'string', default: 'admin', alias: 'p' },
+  mcpPort: { type: 'number', default: 3000, alias: 'm' },
+  explorer: { type: 'boolean', default: false, alias: 'e' },
 })
   .help()
   .alias('h', 'help')

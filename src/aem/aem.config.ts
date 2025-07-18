@@ -27,53 +27,60 @@ export interface AEMConfig {
   };
 }
 
-export const DEFAULT_AEM_CONFIG: AEMConfig = {
-  contentPaths: {
-    sitesRoot: process.env.AEM_SITES_ROOT || '/content',
-    assetsRoot: process.env.AEM_ASSETS_ROOT || '/content/dam',
-    templatesRoot: process.env.AEM_TEMPLATES_ROOT || '/conf',
-    experienceFragmentsRoot: process.env.AEM_XF_ROOT || '/content/experience-fragments',
-  },
-  replication: {
-    publisherUrls: process.env.AEM_PUBLISHER_URLS?.split(',') || ['http://localhost:4503'],
-    defaultReplicationAgent: process.env.AEM_DEFAULT_AGENT || 'publish',
-  },
-  components: {
-    allowedTypes: process.env.AEM_ALLOWED_COMPONENTS?.split(',') || [
-      'text', 'image', 'hero', 'button', 'list', 'teaser', 'carousel'
-    ],
-    defaultProperties: {
-      'jcr:primaryType': 'nt:unstructured',
-      'sling:resourceType': 'foundation/components/text'
-    },
-  },
-  queries: {
-    maxLimit: parseInt(process.env.AEM_QUERY_MAX_LIMIT || '100'),
-    defaultLimit: parseInt(process.env.AEM_QUERY_DEFAULT_LIMIT || '20'),
-    timeoutMs: parseInt(process.env.AEM_QUERY_TIMEOUT || '30000'),
-  },
-  validation: {
-    maxDepth: parseInt(process.env.AEM_MAX_DEPTH || '5'),
-    allowedLocales: ['en'],
-  },
-};
-
-export function getAEMConfig(): AEMConfig {
-  return DEFAULT_AEM_CONFIG;
+export type AEMBaseConfig = {
+  AEM_PUBLISHER_URLS?: string;
+  AEM_ALLOWED_COMPONENTS?: string;
+  AEM_QUERY_MAX_LIMIT?: string;
+  AEM_QUERY_DEFAULT_LIMIT?: string;
+  AEM_QUERY_TIMEOUT?: string;
+  AEM_MAX_DEPTH?: string;
 }
 
-export function isValidContentPath(path: string, config: AEMConfig = DEFAULT_AEM_CONFIG): boolean {
+export function getAEMConfig(config: AEMBaseConfig): AEMConfig {
+  return {
+    contentPaths: {
+      sitesRoot: '/content',
+      assetsRoot: '/content/dam',
+      templatesRoot: '/conf',
+      experienceFragmentsRoot: '/content/experience-fragments',
+    },
+    replication: {
+      publisherUrls: config.AEM_PUBLISHER_URLS?.split(',') || ['http://localhost:4503'],
+      defaultReplicationAgent: 'publish',
+    },
+    components: {
+      allowedTypes: config.AEM_ALLOWED_COMPONENTS?.split(',') || [
+        'text', 'image', 'hero', 'button', 'list', 'teaser', 'carousel'
+      ],
+      defaultProperties: {
+        'jcr:primaryType': 'nt:unstructured',
+        'sling:resourceType': 'foundation/components/text'
+      },
+    },
+    queries: {
+      maxLimit: parseInt(config.AEM_QUERY_MAX_LIMIT || '100'),
+      defaultLimit: parseInt(config.AEM_QUERY_DEFAULT_LIMIT || '20'),
+      timeoutMs: parseInt(config.AEM_QUERY_TIMEOUT || '30000'),
+    },
+    validation: {
+      maxDepth: parseInt(config.AEM_MAX_DEPTH || '5'),
+      allowedLocales: ['en'],
+    },
+  };
+}
+
+export function isValidContentPath(path: string, config: AEMConfig): boolean {
   const allowedRoots = Object.values(config.contentPaths);
   return allowedRoots.some(root => path.startsWith(root));
 }
 
-export function isValidComponentType(componentType: string, config: AEMConfig = DEFAULT_AEM_CONFIG): boolean {
+export function isValidComponentType(componentType: string, config: AEMConfig): boolean {
   return config.components.allowedTypes.includes(componentType);
 }
 
-export function isValidLocale(locale: string, config: AEMConfig = DEFAULT_AEM_CONFIG): boolean {
+export function isValidLocale(locale: string, config: AEMConfig): boolean {
   if (!locale) return false;
   const normalized = locale.toLowerCase();
   return config.validation.allowedLocales.some(l => l.toLowerCase() === normalized ||
     (normalized === 'en' && l.toLowerCase().startsWith('en')));
-} 
+}

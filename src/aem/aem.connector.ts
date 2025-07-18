@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import dotenv from 'dotenv';
+
 import { getAEMConfig, isValidContentPath, isValidComponentType, isValidLocale, AEMConfig } from './aem.config.js';
 import {
   AEMOperationError,
@@ -11,8 +11,6 @@ import {
   AEM_ERROR_CODES
 } from './aem.errors.js';
 import { CliParams } from '../types.js';
-
-dotenv.config();
 
 export interface AEMConnectorConfig {
   aem: {
@@ -38,7 +36,7 @@ export class AEMConnector {
 
   constructor(params: CliParams) {
     this.config = this.loadConfig(params);
-    this.aemConfig = getAEMConfig();
+    this.aemConfig = getAEMConfig({});
     this.auth = {
       username: this.config.aem.serviceUser.username,
       password: this.config.aem.serviceUser.password,
