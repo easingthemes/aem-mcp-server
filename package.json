@@ -33,7 +33,6 @@
     "build:cjs": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --format=cjs",
     "start": "node dist/index.js",
     "dev": "ts-node-dev src/index.ts",
-    "test": "aem-mcp",
     "test:dev": "node ./dist/cli.js"
   },
   "dependencies": {
