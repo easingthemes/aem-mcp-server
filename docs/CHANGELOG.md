@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.3...v1.0.4) (2025-07-18)
+
+
+### Bug Fixes
+
+* [cli] fix cli params ([6405d05](https://github.com/easingthemes/aem-mcp-server/commit/6405d0584586bf2e06c6333757ccee292dceac38))
+
 ## [1.0.3](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.2...v1.0.3) (2025-07-18)
 
 
