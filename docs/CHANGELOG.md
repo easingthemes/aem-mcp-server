@@ -1,3 +1,10 @@
+## [1.0.9](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.8...v1.0.9) (2025-07-18)
+
+
+### Bug Fixes
+
+* [docs] add params info ([b4f128d](https://github.com/easingthemes/aem-mcp-server/commit/b4f128db6aed5d159cd18aa93692e2948c99ffb0))
+
 ## [1.0.8](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.7...v1.0.8) (2025-07-18)
 
 
