@@ -1,10 +1,13 @@
 import { AEMConnector } from '../aem/aem.connector.js';
 import { config } from '../config.js';
+import { CliParams } from '../types.js';
 
 export class MCPRequestHandler {
   aemConnector: AEMConnector;
+  config: CliParams;
 
-  constructor(aemConnector: AEMConnector) {
+  constructor(config: CliParams, aemConnector: AEMConnector) {
+    this.config = config;
     this.aemConnector = aemConnector;
   }
 
@@ -152,7 +155,7 @@ export class MCPRequestHandler {
       mcp: 'ready',
       timestamp: new Date().toISOString(),
       version: config.APP_VERSION || '1.0.0',
-      port: config.SERVER_PORT,
+      port: this.config.mcpPort,
     };
   }
 }

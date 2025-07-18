@@ -10,23 +10,6 @@ This project is designed for AEM developers, content teams, and automation engin
 
 ---
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Usage Examples](#usage-examples)
-- [Configuration](#configuration)
-- [API & Client Usage](#api--client-usage)
-- [AI IDE Integration (Cursor, Cline, etc.)](#ai-ide-integration-cursor-cline-etc)
-- [Security](#security)
-- [Project Structure](#project-structure)
-- [Integrations](#integrations)
-- [Contribution](#contribution)
-- [License](#license)
-
----
-
 ## Overview
 - **Modern, TypeScript-based AEM MCP server**
 - **REST/JSON-RPC API** for AEM content, component, and asset operations
@@ -59,17 +42,6 @@ This project is designed for AEM developers, content teams, and automation engin
 npm install aem-mcp-server -g
 ```
 
-### Configuration
-
-Create a `.env` file in the project root with the following (edit as needed):
-
-```
-AEM_HOST=http://localhost:5502
-AEM_SERVICE_USER=admin
-AEM_SERVICE_PASSWORD=admin
-SERVER_PORT=3000
-```
-
 ### Start the Server
 ```sh
 aem-mcp
@@ -88,7 +60,6 @@ AEM MCP Server is compatible with modern AI IDEs and code editors that support M
    - Add a new server with:
      - **Type:** Custom MCP
      - **url:** `http://127.0.0.1:3000/mcp`
-     - **env:** add env variables if needed
 
 3. **Restart your IDE** and connect. The IDE will now be able to:
    - List, search, and manage AEM content
@@ -101,11 +72,7 @@ Sample for AI-based code editors or custom clients:
 {
   "mcpServers": {
     "AEM": {
-      "url": "http://127.0.0.1:3000/mcp",
-      "env": {
-        "AEM_SERVICE_USER": "admin",
-        "AEM_SERVICE_PASSWORD": "admin"
-      }
+      "url": "http://127.0.0.1:3000/mcp"
     }
   }
 }

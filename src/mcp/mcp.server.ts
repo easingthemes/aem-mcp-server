@@ -1,14 +1,13 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-import { CallToolResult, CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { tools } from './mcp.tools.js';
 import { AEMConnector } from '../aem/aem.connector.js';
 import { MCPRequestHandler } from './mcp.aem-handler.js';
+import { CliParams } from '../types.js';
 
-export const createMCPServer = () => {
-  const aemConnector = new AEMConnector();
-  const mcpHandler = new MCPRequestHandler(aemConnector);
+export const createMCPServer = (cliParams: CliParams) => {
+  const aemConnector = new AEMConnector(cliParams);
+  const mcpHandler = new MCPRequestHandler(cliParams, aemConnector);
 
   const server = new Server({
     name: 'aem-mcp-server',
