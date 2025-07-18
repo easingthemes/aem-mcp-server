@@ -1,3 +1,11 @@
+## [1.0.5](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.4...v1.0.5) (2025-07-18)
+
+
+### Bug Fixes
+
+* [cli] remove test script ([e9d2325](https://github.com/easingthemes/aem-mcp-server/commit/e9d2325e46976965df6fa4e04bfda2047a0927d5))
+* [cli] use es6 ([ef3327c](https://github.com/easingthemes/aem-mcp-server/commit/ef3327c9c6f78e459e756c0f41c13b6002c19193))
+
 ## [1.0.4](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.3...v1.0.4) (2025-07-18)
 
 
