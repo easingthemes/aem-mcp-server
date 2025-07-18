@@ -1,3 +1,10 @@
+## [1.0.12](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.11...v1.0.12) (2025-07-18)
+
+
+### Bug Fixes
+
+* [aem] remove component type check ([6dbf89c](https://github.com/easingthemes/aem-mcp-server/commit/6dbf89c39f78b24e33b3e34992f886c761e6f572))
+
 ## [1.0.11](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.10...v1.0.11) (2025-07-18)
 
 
