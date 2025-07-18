@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.7...v1.0.8) (2025-07-18)
+
+
+### Bug Fixes
+
+* [config] remove dotenv ([2c0ddcd](https://github.com/easingthemes/aem-mcp-server/commit/2c0ddcdb9b5b2c60bb27bfad8dcfeebe39275510))
+
 ## [1.0.7](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.6...v1.0.7) (2025-07-18)
 
 
