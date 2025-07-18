@@ -1,8 +1,13 @@
-const yargs = require('yargs');
-const { hideBin } = require('yargs/helpers');
-const { startServer } = require('../dist/index.js');
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import { startServer } from './index.js';
+import { CliParams } from './types';
 
-const argv = yargs(hideBin(process.argv)).options({
+type CliArgs = CliParams & {
+  help?: boolean;
+};
+
+const argv: CliArgs = yargs(hideBin(process.argv)).options({
   host: { type: 'string', default: 'http://localhost:4502' },
   user: { type: 'string', default: 'admin' },
   pass: { type: 'string', default: 'admin' },
@@ -11,7 +16,7 @@ const argv = yargs(hideBin(process.argv)).options({
 })
   .help()
   .alias('h', 'help')
-  .argv;
+  .parseSync();
 
 if (argv.help) {
   process.exit(0); // prevent startServer from running

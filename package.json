@@ -20,7 +20,7 @@
   ],
   "main": "./dist/index.js",
   "bin": {
-    "aem-mcp": "./cli/cli.js"
+    "aem-mcp": "./dist/cli.js"
   },
   "files": [
     "cli/**/*.js",
@@ -51,6 +51,7 @@
     "@types/node": "^24.0.14",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/yargs": "^17.0.33",
     "esbuild": "^0.25.6",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.3",
