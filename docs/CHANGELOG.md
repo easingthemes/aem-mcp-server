@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.6...v1.0.7) (2025-07-18)
+
+
+### Bug Fixes
+
+* [cli] npm pkg fix ([34dc243](https://github.com/easingthemes/aem-mcp-server/commit/34dc243d1064120b595bc0eb242e3c446bb4c54c))
+
 ## [1.0.6](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.5...v1.0.6) (2025-07-18)
 
 
