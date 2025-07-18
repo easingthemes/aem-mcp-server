@@ -11,7 +11,12 @@
     "url": "https://github.com/easingthemes/aem-mcp-server"
   },
   "keywords": [
-    "AEM", "MCP", "Model Context Protocol", "LLM", "Adobe Experience Manager", "TypeScript"
+    "AEM",
+    "MCP",
+    "Model Context Protocol",
+    "LLM",
+    "Adobe Experience Manager",
+    "TypeScript"
   ],
   "main": "./dist/index.js",
   "bin": {
