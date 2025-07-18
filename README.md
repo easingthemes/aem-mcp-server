@@ -44,7 +44,6 @@ This project is designed for AEM developers, content teams, and automation engin
 - **Template & Structure Discovery**: List templates, analyze page/component structure
 - **JCR Node Access**: Legacy and modern node/content access
 - **AI/LLM Integration**: Natural language interface for AEM via OpenAI, Anthropic, Ollama, or custom LLMs
-- **Telegram Bot**: Manage AEM via chat, including conversational commands
 - **Security**: Auth, environment-based config, and safe operation defaults
 
 ---
@@ -57,86 +56,24 @@ This project is designed for AEM developers, content teams, and automation engin
 
 ### Installation
 ```sh
-cd clone
-npm install
+npm install aem-mcp-server -g
 ```
 
-### Build
-```sh
-npm run build
-```
+### Configuration
 
-### Run (Production)
-```sh
-npm start
-```
-
-### Run (Development, hot reload)
-```sh
-npm run dev
-```
-
----
-
-## Usage Examples
-
-### 1. List all pages under a path
-```sh
-curl -u admin:admin \
-  -X POST http://localhost:8080/api \
-  -H 'Content-Type: application/json' \
-  -d '{"method":"mcp_aem-mcp_listPages","params":{"siteRoot":"/content/we-retail","depth":2,"limit":10}}'
-```
-
-### 2. Update a component property
-```sh
-curl -u admin:admin \
-  -X POST http://localhost:8080/api \
-  -H 'Content-Type: application/json' \
-  -d '{"method":"mcp_aem-mcp_updateComponent","params":{"componentPath":"/content/we-retail/us/en/experience/jcr:content/root/hero_image","properties":{"Heading":"New Heading"}}}'
-```
-
-### 3. Use with AI IDEs (Cursor, Cline, etc.)
-- See the [AI IDE Integration](#ai-ide-integration-cursor-cline-etc) section below.
-
----
-
-## Configuration
-
-### Environment Variables
 Create a `.env` file in the project root with the following (edit as needed):
 
 ```
-AEM_HOST=http://localhost:4502
+AEM_HOST=http://localhost:5502
 AEM_SERVICE_USER=admin
 AEM_SERVICE_PASSWORD=admin
 SERVER_PORT=3000
-MCP_USERNAME=admin
-MCP_PASSWORD=admin
 ```
 
-### MCP Client Configuration
-Sample for AI-based code editors or custom clients:
-
-```json
-{
-  "mcpServers": {
-    "aem-mcp": {
-      "command": "node",
-      "args": [
-        "absolute path to dist/index.js"
-      ]
-    }
-  }
-}
+### Start the Server
+```sh
+aem-mcp
 ```
-
----
-
-## API & Client Usage
-- **REST/JSON-RPC**: Exposes all AEM operations via HTTP endpoints
-- **Supported Operations**: Page/asset CRUD, component validation/update, search, rollout, publish, text/image extraction, and more
-- **AI/LLM**: Send natural language commands to the server (via API or Telegram)
 
 ---
 
@@ -150,40 +87,39 @@ AEM MCP Server is compatible with modern AI IDEs and code editors that support M
    - Open your IDE's MCP server settings.
    - Add a new server with:
      - **Type:** Custom MCP
-     - **Command:** `node`
-     - **Args:** `["/absolute/path/to/dist/index.js"]`
-     - **Port:** `3000` (or as configured)
-     - **Auth:** Use `MCP_USERNAME`/`MCP_PASSWORD` from your `.env`
+     - **url:** `http://127.0.0.1:3000/mcp`
+     - **env:** add env variables if needed
+
 3. **Restart your IDE** and connect. The IDE will now be able to:
    - List, search, and manage AEM content
    - Run MCP methods (CRUD, search, rollout, etc.)
    - Use AI/LLM features if enabled
 
-### Custom MCP Clients
-- You can build your own MCP client in any language that supports HTTP/JSON-RPC.
-- See the [Usage Examples](#usage-examples) for API call patterns.
-- Authenticate using basic auth (`MCP_USERNAME`/`MCP_PASSWORD`).
-- All MCP methods are available via the `/api` endpoint.
+Sample for AI-based code editors or custom clients:
 
----
+```json
+{
+  "mcpServers": {
+    "AEM": {
+      "url": "http://127.0.0.1:3000/mcp",
+      "env": {
+        "AEM_SERVICE_USER": "admin",
+        "AEM_SERVICE_PASSWORD": "admin"
+      }
+    }
+  }
+}
+```
 
-## Security
-- Auth required for all operations (see `MCP_USERNAME`/`MCP_PASSWORD`)
-- Environment-based configuration for safe deployment
-- All destructive operations require explicit parameters and validation
+![cursor.png](docs/cursor.png)
 
----
+## Usage
 
-## Project Structure
-- `src/` — TypeScript source code
-- `dist/` — Compiled JS output
+@[TOOL_NAME]() params
 
----
-
-## Integrations
-- **AI/LLM**: OpenAI, Anthropic, Ollama, custom HTTP APIs
-
----
+```
+@scanPageComponents() /content/path/to/page
+```
 
 ## Contribution
 Contributions are welcome! Please open issues or pull requests for bug fixes, features, or documentation improvements.
