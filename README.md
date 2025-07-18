@@ -47,6 +47,19 @@ npm install aem-mcp-server -g
 aem-mcp
 ```
 
+### Configuration
+```
+Options:
+      --version    Show version number                                      [boolean]
+  -H, --host       Author instance URL [string]    [default: "http://localhost:4502"]
+  -P, --publisher  Publisher instance URL [string] [default: "http://localhost:4503"]
+  -u, --user       Username for authentication            [string] [default: "admin"]
+  -p, --pass       Password for authentication            [string] [default: "admin"]
+  -m, --mcpPort    Port for MCP server                       [number] [default: 3000]
+  -e, --explorer   Enable Swagger API explorer             [boolean] [default: false]
+  -h, --help       Show help                                                [boolean]
+
+```
 ---
 
 ## AI IDE Integration (Cursor, Cline, etc.)
@@ -87,6 +100,13 @@ Sample for AI-based code editors or custom clients:
 ```
 @scanPageComponents() /content/path/to/page
 ```
+
+## API Documentation
+
+For detailed API documentation, please refer to the [API Docs](docs/API.md).
+- Enable the API explorer with the `-e` flag to access Swagger UI:
+```aem-mcp -e```
+- Open http://localhost:3000/api-docs to explore the API endpoints.
 
 ## Contribution
 Contributions are welcome! Please open issues or pull requests for bug fixes, features, or documentation improvements.
