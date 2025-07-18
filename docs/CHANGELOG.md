@@ -1,3 +1,10 @@
+## [1.0.10](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.9...v1.0.10) (2025-07-18)
+
+
+### Bug Fixes
+
+* [docs] add docs dir ([d8e6f04](https://github.com/easingthemes/aem-mcp-server/commit/d8e6f04dc8963d559d258d1491d5ea81e4b9d9e0))
+
 ## [1.0.9](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.8...v1.0.9) (2025-07-18)
 
 
