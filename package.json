@@ -25,6 +25,7 @@
   "files": [
     "cli/**/*.js",
     "dist/**/*.js",
+    "docs/",
     "README.md",
     "LICENSE"
   ],
