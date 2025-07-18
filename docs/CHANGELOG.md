@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.2...v1.0.3) (2025-07-18)
+
+
+### Bug Fixes
+
+* [build] fix build path ([683b87f](https://github.com/easingthemes/aem-mcp-server/commit/683b87fb3cad42867baa851cce766ec956c1c637))
+
 ## [1.0.2](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.1...v1.0.2) (2025-07-18)
 
 
