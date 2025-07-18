@@ -1,3 +1,10 @@
+## [1.0.11](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.10...v1.0.11) (2025-07-18)
+
+
+### Bug Fixes
+
+* [build] minify ([4760bdc](https://github.com/easingthemes/aem-mcp-server/commit/4760bdcccf6c38b10df4f472c6900279bc09cacb))
+
 ## [1.0.10](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.9...v1.0.10) (2025-07-18)
 
 
