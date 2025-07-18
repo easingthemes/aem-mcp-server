@@ -2,7 +2,6 @@
   "name": "aem-mcp-server",
   "version": "1.0.0",
   "description": "AEM Model Context Protocol (MCP) server",
-  "main": "dist/index.js",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -14,12 +13,19 @@
   "keywords": [
     "AEM", "MCP", "Model Context Protocol", "LLM", "Adobe Experience Manager", "TypeScript"
   ],
+  "main": "./dist/index.js",
+  "bin": {
+    "aem-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist/**/*.js",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "start2": "node ./dist/index.js",
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev src/index.ts",
-    "mcp": "node dist/mcp-server.js"
+    "dev": "ts-node-dev src/index.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.16.0",
