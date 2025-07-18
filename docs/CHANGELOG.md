@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.5...v1.0.6) (2025-07-18)
+
+
+### Bug Fixes
+
+* [cli] add node bin ([50d73f4](https://github.com/easingthemes/aem-mcp-server/commit/50d73f4a1ee1ee037366aa8a0d42639c8602a2fe))
+
 ## [1.0.5](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.4...v1.0.5) (2025-07-18)
 
 
