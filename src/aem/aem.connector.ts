@@ -10,6 +10,7 @@ import {
   createSuccessResponse,
   AEM_ERROR_CODES
 } from './aem.errors.js';
+import { CliParams } from '../types.js';
 
 dotenv.config();
 
@@ -35,28 +36,24 @@ export class AEMConnector {
   auth: { username: string; password: string };
   aemConfig: AEMConfig;
 
-  constructor() {
-    this.config = this.loadConfig();
+  constructor(params: CliParams) {
+    this.config = this.loadConfig(params);
     this.aemConfig = getAEMConfig();
     this.auth = {
-      username: process.env.AEM_SERVICE_USER || this.config.aem.serviceUser.username,
-      password: process.env.AEM_SERVICE_PASSWORD || this.config.aem.serviceUser.password,
+      username: this.config.aem.serviceUser.username,
+      password: this.config.aem.serviceUser.password,
     };
-    if (process.env.AEM_HOST) {
-      this.config.aem.host = process.env.AEM_HOST;
-      this.config.aem.author = process.env.AEM_HOST;
-    }
   }
 
-  loadConfig(): AEMConnectorConfig {
+  loadConfig(params: CliParams = {}): AEMConnectorConfig {
     return {
       aem: {
-        host: process.env.AEM_HOST || 'http://localhost:4502',
-        author: process.env.AEM_HOST || 'http://localhost:4502',
+        host: params.host || 'http://localhost:4502',
+        author: params.host || 'http://localhost:4502',
         publish: 'http://localhost:4503',
         serviceUser: {
-          username: 'admin',
-          password: 'admin',
+          username: params.user || 'admin',
+          password: params.pass || 'admin',
         },
         endpoints: {
           content: '/content',

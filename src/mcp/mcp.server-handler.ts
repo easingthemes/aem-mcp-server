@@ -4,8 +4,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { transports } from './mcp.transports.js';
 import { createMCPServer } from './mcp.server.js';
+import { CliParams } from '../types.js';
 
-export const handleRequest = async (req: Request, res: Response) => {
+export const handleRequest = async (req: Request, res: Response, cliParams: CliParams) => {
   console.log('Received MCP request:', req.body);
   const { jsonrpc, id, method, params } = req.body;
   if (jsonrpc !== '2.0' || !method) {
@@ -38,7 +39,7 @@ export const handleRequest = async (req: Request, res: Response) => {
       });
 
       // Connect the transport to the MCP server BEFORE handling the request
-      const server = createMCPServer();
+      const server = createMCPServer(cliParams);
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
       return; // Already handled

@@ -20,9 +20,10 @@
   ],
   "main": "./dist/index.js",
   "bin": {
-    "aem-mcp": "./dist/index.js"
+    "aem-mcp": "./cli/cli.js"
   },
   "files": [
+    "cli/**/*.js",
     "dist/**/*.js",
     "README.md",
     "LICENSE"
@@ -41,6 +42,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "tsx": "^4.20.3",
+    "yargs": "^18.0.0",
     "zod": "^4.0.5"
   },
   "devDependencies": {
