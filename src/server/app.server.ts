@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { handleRequest } from '../mcp/mcp.server-handler';
+import { handleRequest } from '../mcp/mcp.server-handler.js';
 // import { useBasicAuth } from './app.auth.js';
 import { AEMConnector } from '../aem/aem.connector.js';
 import { MCPRequestHandler } from '../mcp/mcp.aem-handler.js';

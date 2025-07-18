@@ -29,13 +29,16 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --format=cjs",
+    "build": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node",
+    "build:cjs": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --format=cjs",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev src/index.ts"
+    "dev": "ts-node-dev src/index.ts",
+    "test": "aem-mcp",
+    "test:dev": "node ./dist/cli.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.16.0",
-    "axios": "^1.6.7",
+    "axios": "^1.10.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
