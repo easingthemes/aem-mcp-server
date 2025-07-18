@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-import { getAEMConfig, isValidContentPath, isValidComponentType, isValidLocale, AEMConfig } from './aem.config.js';
+import { getAEMConfig, isValidContentPath, isValidLocale, AEMConfig } from './aem.config.js';
 import {
   AEMOperationError,
   createAEMError,
@@ -122,9 +122,6 @@ export class AEMConnector {
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PATH, `Path '${pagePath}' is not within allowed content roots`, { path: pagePath, allowedRoots: Object.values(this.aemConfig.contentPaths) });
       }
-      if (!isValidComponentType(component, this.aemConfig)) {
-        throw createAEMError(AEM_ERROR_CODES.INVALID_COMPONENT_TYPE, `Component type '${component}' is not allowed`, { component, allowedTypes: this.aemConfig.components.allowedTypes });
-      }
       const client = this.createAxiosInstance();
       const response = await client.get(`${pagePath}.json`, {
         params: { ':depth': '2' },
@@ -139,7 +136,6 @@ export class AEMConnector {
         validation,
         configUsed: {
           allowedLocales: this.aemConfig.validation.allowedLocales,
-          allowedComponents: this.aemConfig.components.allowedTypes,
         },
       }, 'validateComponent');
     }, 'validateComponent');
@@ -647,17 +643,14 @@ export class AEMConnector {
 
   async createComponent(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { pagePath, componentType, resourceType, properties = {}, name } = request;
+      const { pagePath, componentPath, componentType, resourceType, properties = {}, name } = request;
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
-      if (!isValidComponentType(componentType, this.aemConfig)) {
-        throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid component type: ${componentType}`, { componentType });
-      }
       const componentName = name || `${componentType}_${Date.now()}`;
-      const componentPath = `${pagePath}/jcr:content/${componentName}`;
+      const componentNodePath = componentPath || `${pagePath}/jcr:content/${componentName}`;
       const client = this.createAxiosInstance();
-      await client.post(componentPath, {
+      await client.post(componentNodePath, {
         'jcr:primaryType': 'nt:unstructured',
         'sling:resourceType': resourceType,
         ...properties,

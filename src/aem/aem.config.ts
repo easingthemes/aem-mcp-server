@@ -13,7 +13,6 @@ export interface AEMConfig {
     defaultReplicationAgent: string;
   };
   components: {
-    allowedTypes: string[];
     defaultProperties: Record<string, any>;
   };
   queries: {
@@ -49,9 +48,6 @@ export function getAEMConfig(config: AEMBaseConfig): AEMConfig {
       defaultReplicationAgent: 'publish',
     },
     components: {
-      allowedTypes: config.AEM_ALLOWED_COMPONENTS?.split(',') || [
-        'text', 'image', 'hero', 'button', 'list', 'teaser', 'carousel'
-      ],
       defaultProperties: {
         'jcr:primaryType': 'nt:unstructured',
         'sling:resourceType': 'foundation/components/text'
@@ -72,10 +68,6 @@ export function getAEMConfig(config: AEMBaseConfig): AEMConfig {
 export function isValidContentPath(path: string, config: AEMConfig): boolean {
   const allowedRoots = Object.values(config.contentPaths);
   return allowedRoots.some(root => path.startsWith(root));
-}
-
-export function isValidComponentType(componentType: string, config: AEMConfig): boolean {
-  return config.components.allowedTypes.includes(componentType);
 }
 
 export function isValidLocale(locale: string, config: AEMConfig): boolean {
