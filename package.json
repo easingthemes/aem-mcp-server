@@ -1,6 +1,6 @@
 {
   "name": "aem-mcp-server",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "AEM Model Context Protocol (MCP) server",
   "private": false,
   "publishConfig": {

@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.3...v1.1.4) (2025-07-19)
+
+
+### Bug Fixes
+
+* [docs] simplify Readme ([6e00bef](https://github.com/easingthemes/aem-mcp-server/commit/6e00bef7a498d872573549cc7d35206affe98bba))
+
 ## [1.1.3](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.2...v1.1.3) (2025-07-19)
 
 
