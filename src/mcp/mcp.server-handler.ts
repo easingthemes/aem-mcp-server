@@ -8,6 +8,8 @@ import { CliParams } from '../types.js';
 
 export const handleRequest = async (req: Request, res: Response, cliParams: CliParams) => {
   console.log('Received MCP request:', req.body);
+  console.log('Route path:', req.route?.path);           // '/mcp'
+  console.log('Full path:', req.baseUrl + req.path);     // '/mcp'
   const { jsonrpc, id, method, params } = req.body;
   if (jsonrpc !== '2.0' || !method) {
     res.status(400).json({

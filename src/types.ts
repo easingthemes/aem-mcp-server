@@ -3,5 +3,4 @@ export type CliParams = {
   user?: string;
   pass?: string;
   mcpPort?: number;
-  explorer?: boolean;
 };
