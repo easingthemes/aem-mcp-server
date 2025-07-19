@@ -106,3 +106,8 @@ List all components on MyPage
 ## API Documentation
 
 For detailed API documentation, please refer to the [API Docs](docs/API.md).
+
+## Similar Projects
+
+- https://github.com/indrasishbanerjee/aem-mcp-server (Used as a base for this project)
+- https://www.npmjs.com/package/@myea/aem-mcp-handler (Looks like an original source of the above project)
