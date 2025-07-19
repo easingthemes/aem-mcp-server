@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.12...v1.1.0) (2025-07-19)
+
+
+### Features
+
+* [deps] remove swagger ([6cfa01a](https://github.com/easingthemes/aem-mcp-server/commit/6cfa01ac1d8336fb2a5de300cedcc5581726512f))
+
 ## [1.0.12](https://github.com/easingthemes/aem-mcp-server/compare/v1.0.11...v1.0.12) (2025-07-18)
 
 
