@@ -22,20 +22,6 @@ This project is designed for non-technical persons who want to manage AEM via na
 
 ---
 
-## Features
-
-- **AEM Page & Asset Management**: Create, update, delete, activate, deactivate, and replicate pages and assets
-- **Component Operations**: Validate, update, scan, and manage AEM components (including Experience Fragments)
-- **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
-- **Replication & Rollout**: Publish/unpublish content, roll out changes to language copies
-- **Text & Image Extraction**: Extract all text and images from pages, including fragments
-- **Template & Structure Discovery**: List templates, analyze page/component structure
-- **JCR Node Access**: Legacy and modern node/content access
-- **AI/LLM Integration**: Natural language interface for AEM via OpenAI, Anthropic, Ollama, or custom LLMs
-- **Security**: Auth, environment-based config, and safe operation defaults
-
----
-
 ## Quick Start
 
 ### Prerequisites
@@ -61,10 +47,24 @@ Options:
   -u, --user       Username for authentication            [string] [default: "admin"]
   -p, --pass       Password for authentication            [string] [default: "admin"]
   -m, --mcpPort    Port for MCP server                       [number] [default: 3000]
-  -e, --explorer   Enable Swagger API explorer             [boolean] [default: false]
   -h, --help       Show help                                                [boolean]
 
 ```
+
+---
+
+## Features
+
+- **AEM Page & Asset Management**: Create, update, delete, activate, deactivate, and replicate pages and assets
+- **Component Operations**: Validate, update, scan, and manage AEM components (including Experience Fragments)
+- **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
+- **Replication & Rollout**: Publish/unpublish content, roll out changes to language copies
+- **Text & Image Extraction**: Extract all text and images from pages, including fragments
+- **Template & Structure Discovery**: List templates, analyze page/component structure
+- **JCR Node Access**: Legacy and modern node/content access
+- **AI/LLM Integration**: Natural language interface for AEM via OpenAI, Anthropic, Ollama, or custom LLMs
+- **Security**: Auth, environment-based config, and safe operation defaults
+
 ---
 
 ## AI IDE Integration (Cursor, Copilot, etc.)
