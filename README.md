@@ -1,24 +1,29 @@
 # AEM MCP Server (aem-mcp-server)
 
+[![Version](https://img.shields.io/npm/v/@easingthemes/aem-mcp-server.svg)](https://npmjs.org/package/@netcentric/cm-notify-core)
+[![Release Status](https://github.com/easingthemes/aem-mcp-server/actions/workflows/release.yml/badge.svg)](https://github.com/easingthemes/aem-mcp-server/actions/workflows/release.yml)
+[![CodeQL Analysis](https://github.com/easingthemes/aem-mcp-server/workflows/CodeQL/badge.svg?branch=main)](https://github.com/easingthemes/aem-mcp-server/actions)
+[![semver: semantic-release](https://img.shields.io/badge/semver-semantic--release-blue.svg)](https://github.com/semantic-release/semantic-release)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Node.js CI](https://img.shields.io/badge/node-%3E=18-blue.svg)](https://nodejs.org/)
-[![AEM Compatible](https://img.shields.io/badge/aem-6.5%2B-blue.svg)](https://www.adobe.com/marketing-cloud/experience-manager.html)
 
-AEM MCP Server is a full-featured, extensible Model Context Protocol (MCP) server for Adobe Experience Manager (AEM). 
-It provides a robust REST/JSON-RPC API for content, component, and asset management, with advanced integrations for AI, chatbots, and automation. 
-This project is designed for AEM developers, content teams, and automation engineers who want to manage AEM programmatically or via natural language.
+AEM MCP Server is a full-featured Model Context Protocol (MCP) server for Adobe Experience Manager (AEM). 
+It provides a simple integration with any AI Agent.
+This project is designed for non-technical persons who want to manage AEM via natural language.
 
 ---
 
 ## Overview
+
+- **Chat with your AEM instance** for content, component, and asset operations.
+- **AI IDEs integration** (Cursor, Copilot, Webstorm, VS Code, etc.)
+- **Production-ready, modular, and configurable**
 - **Modern, TypeScript-based AEM MCP server**
-- **REST/JSON-RPC API** for AEM content, component, and asset operations
-- **AI/LLM integration** (OpenAI, Anthropic, Ollama, custom HTTP APIs)
-- **Production-ready, modular, and extensible**
+- **REST/JSON-RPC API** with latest MCP features.
 
 ---
 
 ## Features
+
 - **AEM Page & Asset Management**: Create, update, delete, activate, deactivate, and replicate pages and assets
 - **Component Operations**: Validate, update, scan, and manage AEM components (including Experience Fragments)
 - **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
@@ -62,22 +67,21 @@ Options:
 ```
 ---
 
-## AI IDE Integration (Cursor, Cline, etc.)
+## AI IDE Integration (Cursor, Copilot, etc.)
 
-AEM MCP Server is compatible with modern AI IDEs and code editors that support MCP protocol, such as **Cursor** and **Cline**.
+AEM MCP Server is compatible with modern AI IDEs and code editors that support MCP protocol, such as **Cursor** and **Copilot** (eg in WebStorm or VS Code).
 
 ### How to Connect:
 1. **Install and run the AEM MCP Server** as described above.
-2. **Configure your IDE** to connect to the MCP server. Example for Cursor/Cline:
+2. **Configure your IDE** to connect to the MCP server:
    - Open your IDE's MCP server settings.
    - Add a new server with:
      - **Type:** Custom MCP
      - **url:** `http://127.0.0.1:3000/mcp`
 
-3. **Restart your IDE** and connect. The IDE will now be able to:
+3. **Restart your IDE** if needed. The IDE will now be able to:
    - List, search, and manage AEM content
    - Run MCP methods (CRUD, search, rollout, etc.)
-   - Use AI/LLM features if enabled
 
 Sample for AI-based code editors or custom clients:
 
@@ -95,20 +99,10 @@ Sample for AI-based code editors or custom clients:
 
 ## Usage
 
-@[TOOL_NAME]() params
-
 ```
-@scanPageComponents() /content/path/to/page
+List all components on MyPage
 ```
 
 ## API Documentation
 
 For detailed API documentation, please refer to the [API Docs](docs/API.md).
-
-## Contribution
-Contributions are welcome! Please open issues or pull requests for bug fixes, features, or documentation improvements.
-
----
-
-## License
-[MIT](LICENSE) 
