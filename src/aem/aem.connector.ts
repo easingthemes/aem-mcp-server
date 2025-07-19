@@ -435,28 +435,69 @@ export class AEMConnector {
   }
 
   /**
-   * List direct or nested children under a path using .json with depth param.
-   * Filters out system keys. Returns array of { name, path, primaryType, title }.
+   * List direct children under a path using AEM's JSON API.
+   * Returns array of { name, path, primaryType, title }.
    */
   async listChildren(path: string, depth: number = 1): Promise<any[]> {
-    // Patch: Use QueryBuilder to list direct children cq:Page nodes under the given path
     return safeExecute<any[]>(async () => {
       const client = this.createAxiosInstance();
-      const response = await client.get(this.config.aem.endpoints.query, {
+
+      // First try direct JSON API approach
+      try {
+        const response = await client.get(`${path}.${depth}.json`);
+        const children: any[] = [];
+
+        if (response.data && typeof response.data === 'object') {
+          Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+            // Skip JCR system properties and metadata
+            if (key.startsWith('jcr:') || key.startsWith('sling:') || key.startsWith('cq:') ||
+                key.startsWith('rep:') || key.startsWith('oak:') || key === 'jcr:content') {
+              return;
+            }
+
+            if (value && typeof value === 'object') {
+              const childPath = `${path}/${key}`;
+              children.push({
+                name: key,
+                path: childPath,
+                primaryType: value['jcr:primaryType'] || 'nt:unstructured',
+                title: value['jcr:content']?.['jcr:title'] ||
+                       value['jcr:title'] ||
+                       key,
+                lastModified: value['jcr:content']?.['cq:lastModified'] ||
+                             value['cq:lastModified'],
+                resourceType: value['jcr:content']?.['sling:resourceType'] ||
+                             value['sling:resourceType']
+              });
+            }
+          });
+        }
+
+        return children;
+      } catch (error: any) {
+        // Fallback to QueryBuilder for cq:Page nodes specifically
+        if (error.response?.status === 404 || error.response?.status === 403) {
+          const response = await client.get('/bin/querybuilder.json', {
         params: {
-          path,
+              path: path,
           type: 'cq:Page',
-          'p.nodedepth': 1,
-          'p.limit': 1000,
+              'p.nodedepth': '1',
+              'p.limit': '1000',
+              'p.hits': 'full'
         },
       });
       const children = (response.data.hits || []).map((hit: any) => ({
-        name: hit.name,
+            name: hit.name || hit.path?.split('/').pop(),
         path: hit.path,
-        primaryType: 'cq:Page',
-        title: hit.title || hit.name,
+            primaryType: hit['jcr:primaryType'] || 'cq:Page',
+            title: hit['jcr:content/jcr:title'] || hit.title || hit.name,
+            lastModified: hit['jcr:content/cq:lastModified'],
+            resourceType: hit['jcr:content/sling:resourceType']
       }));
       return children;
+        }
+        throw error;
+      }
     }, 'listChildren');
   }
 
@@ -464,31 +505,102 @@ export class AEMConnector {
    * List all cq:Page nodes under a site root, up to a given depth and limit.
    */
   async listPages(siteRoot: string, depth: number = 1, limit: number = 20): Promise<object> {
-    // Patch: Use QueryBuilder to find cq:Page nodes under siteRoot up to depth
     return safeExecute<object>(async () => {
       const client = this.createAxiosInstance();
-      const response = await client.get(this.config.aem.endpoints.query, {
+
+      // First try direct JSON API approach for better performance
+      try {
+        const response = await client.get(`${siteRoot}.${depth}.json`);
+        const pages: any[] = [];
+
+        const processNode = (node: any, currentPath: string, currentDepth: number) => {
+          if (currentDepth > depth || pages.length >= limit) return;
+
+          Object.entries(node).forEach(([key, value]: [string, any]) => {
+            if (pages.length >= limit) return;
+
+            // Skip JCR system properties
+            if (key.startsWith('jcr:') || key.startsWith('sling:') || key.startsWith('cq:') ||
+                key.startsWith('rep:') || key.startsWith('oak:')) {
+              return;
+            }
+
+            if (value && typeof value === 'object') {
+              const childPath = `${currentPath}/${key}`;
+              const primaryType = value['jcr:primaryType'];
+
+              // Only include cq:Page nodes
+              if (primaryType === 'cq:Page') {
+                pages.push({
+                  name: key,
+                  path: childPath,
+                  primaryType: 'cq:Page',
+                  title: value['jcr:content']?.['jcr:title'] || key,
+                  template: value['jcr:content']?.['cq:template'],
+                  lastModified: value['jcr:content']?.['cq:lastModified'],
+                  lastModifiedBy: value['jcr:content']?.['cq:lastModifiedBy'],
+                  resourceType: value['jcr:content']?.['sling:resourceType'],
+                  type: 'page'
+                });
+              }
+
+              // Recursively process child nodes if within depth limit
+              if (currentDepth < depth) {
+                processNode(value, childPath, currentDepth + 1);
+              }
+            }
+          });
+        };
+
+        if (response.data && typeof response.data === 'object') {
+          processNode(response.data, siteRoot, 0);
+        }
+
+        return createSuccessResponse({
+          siteRoot,
+          pages,
+          pageCount: pages.length,
+          depth,
+          limit,
+          totalChildrenScanned: pages.length
+        }, 'listPages');
+
+      } catch (error: any) {
+        // Fallback to QueryBuilder if JSON API fails
+        if (error.response?.status === 404 || error.response?.status === 403) {
+          const response = await client.get('/bin/querybuilder.json', {
         params: {
           path: siteRoot,
           type: 'cq:Page',
-          'p.nodedepth': depth,
-          'p.limit': limit,
+              'p.nodedepth': depth.toString(),
+              'p.limit': limit.toString(),
+              'p.hits': 'full'
         },
       });
       const pages = (response.data.hits || []).map((hit: any) => ({
-        name: hit.name,
+            name: hit.name || hit.path?.split('/').pop(),
         path: hit.path,
         primaryType: 'cq:Page',
-        title: hit.title || hit.name,
-        type: 'page',
+            title: hit['jcr:content/jcr:title'] || hit.title || hit.name,
+            template: hit['jcr:content/cq:template'],
+            lastModified: hit['jcr:content/cq:lastModified'],
+            lastModifiedBy: hit['jcr:content/cq:lastModifiedBy'],
+            resourceType: hit['jcr:content/sling:resourceType'],
+            type: 'page'
       }));
-      return {
-        success: true,
+
+          return createSuccessResponse({
         siteRoot,
         pages,
         pageCount: pages.length,
-        totalChildrenScanned: response.data.hits ? response.data.hits.length : 0,
-      };
+            depth,
+            limit,
+            totalChildrenScanned: response.data.total || pages.length,
+            fallbackUsed: 'QueryBuilder'
+          }, 'listPages');
+        }
+        throw error;
+      }
     }, 'listPages');
   }
 
@@ -542,7 +654,10 @@ export class AEMConnector {
         tags: content['cq:tags'] || [],
         properties: content,
       };
-      return properties;
+      return createSuccessResponse({
+        pagePath,
+        properties
+      }, 'getPageProperties');
     }, 'getPageProperties');
   }
 
@@ -709,14 +824,45 @@ export class AEMConnector {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Content paths array is required and cannot be empty', { contentPaths });
       }
       const client = this.createAxiosInstance();
-      await client.post('/etc/replication/agents.author/publish/jcr:content.queue.json', {
-        cmd: 'Deactivate',
-        path: contentPaths,
-        ignoredeactivated: false,
-        onlymodified: false,
+      const results: any[] = [];
+
+      // Process each path individually using the correct AEM replication API
+      for (const path of Array.isArray(contentPaths) ? contentPaths : [contentPaths]) {
+        try {
+          // Use the correct AEM replication servlet endpoint
+          const formData = new URLSearchParams();
+          formData.append('cmd', 'Deactivate');
+          formData.append('path', path);
+          formData.append('ignoredeactivated', 'false');
+          formData.append('onlymodified', 'false');
+
+          if (unpublishTree) {
+            formData.append('deep', 'true');
+          }
+
+          const response = await client.post('/bin/replicate.json', formData, {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
       });
-      return createSuccessResponse({
+
+          results.push({
+            path,
         success: true,
+            response: response.data
+          });
+        } catch (error: any) {
+          results.push({
+            path,
+            success: false,
+            error: error.response?.data || error.message
+          });
+        }
+      }
+
+      return createSuccessResponse({
+        success: results.every(r => r.success),
+        results,
         unpublishedPaths: contentPaths,
         unpublishTree,
         timestamp: new Date().toISOString(),
@@ -731,8 +877,38 @@ export class AEMConnector {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
       const client = this.createAxiosInstance();
-      await client.post('/etc/replication/agents.author/publish/jcr:content.queue.json', {
-        cmd: 'Activate',
+
+      try {
+        // Use the correct AEM replication servlet endpoint
+        const formData = new URLSearchParams();
+        formData.append('cmd', 'Activate');
+        formData.append('path', pagePath);
+        formData.append('ignoredeactivated', 'false');
+        formData.append('onlymodified', 'false');
+
+        if (activateTree) {
+          formData.append('deep', 'true');
+        }
+
+        const response = await client.post('/bin/replicate.json', formData, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        });
+
+        return createSuccessResponse({
+          success: true,
+          activatedPath: pagePath,
+          activateTree,
+          response: response.data,
+          timestamp: new Date().toISOString(),
+        }, 'activatePage');
+      } catch (error: any) {
+        // Fallback to alternative replication methods
+        try {
+          // Try using the WCM command servlet
+          const wcmResponse = await client.post('/bin/wcmcommand', {
+            cmd: 'activate',
         path: pagePath,
         ignoredeactivated: false,
         onlymodified: false,
@@ -741,8 +917,14 @@ export class AEMConnector {
         success: true,
         activatedPath: pagePath,
         activateTree,
+            response: wcmResponse.data,
+            fallbackUsed: 'WCM Command',
         timestamp: new Date().toISOString(),
       }, 'activatePage');
+        } catch (fallbackError: any) {
+          throw handleAEMHttpError(error, 'activatePage');
+        }
+      }
     }, 'activatePage');
   }
 
@@ -753,8 +935,38 @@ export class AEMConnector {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
       const client = this.createAxiosInstance();
-      await client.post('/etc/replication/agents.author/publish/jcr:content.queue.json', {
-        cmd: 'Deactivate',
+
+      try {
+        // Use the correct AEM replication servlet endpoint
+        const formData = new URLSearchParams();
+        formData.append('cmd', 'Deactivate');
+        formData.append('path', pagePath);
+        formData.append('ignoredeactivated', 'false');
+        formData.append('onlymodified', 'false');
+
+        if (deactivateTree) {
+          formData.append('deep', 'true');
+        }
+
+        const response = await client.post('/bin/replicate.json', formData, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        });
+
+        return createSuccessResponse({
+          success: true,
+          deactivatedPath: pagePath,
+          deactivateTree,
+          response: response.data,
+          timestamp: new Date().toISOString(),
+        }, 'deactivatePage');
+      } catch (error: any) {
+        // Fallback to alternative replication methods
+        try {
+          // Try using the WCM command servlet
+          const wcmResponse = await client.post('/bin/wcmcommand', {
+            cmd: 'deactivate',
         path: pagePath,
         ignoredeactivated: false,
         onlymodified: false,
@@ -763,8 +975,14 @@ export class AEMConnector {
         success: true,
         deactivatedPath: pagePath,
         deactivateTree,
+            response: wcmResponse.data,
+            fallbackUsed: 'WCM Command',
         timestamp: new Date().toISOString(),
       }, 'deactivatePage');
+        } catch (fallbackError: any) {
+          throw handleAEMHttpError(error, 'deactivatePage');
+        }
+      }
     }, 'deactivatePage');
   }
 
@@ -774,34 +992,81 @@ export class AEMConnector {
       if (!isValidContentPath(parentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid parent path: ${String(parentPath)}`, { parentPath });
       }
+
+      const client = this.createAxiosInstance();
       const assetPath = `${parentPath}/${fileName}`;
+
+      try {
+        // Use proper AEM DAM asset upload via Sling POST servlet
       const formData = new URLSearchParams();
+
+        // Set the file content (base64 or binary)
       if (typeof fileContent === 'string') {
+          // Assume base64 encoded content
         formData.append('file', fileContent);
       } else {
         formData.append('file', fileContent.toString());
       }
+
+        // Set required Sling POST parameters for asset creation
       formData.append('fileName', fileName);
+        formData.append(':operation', 'import');
+        formData.append(':contentType', 'json');
+        formData.append(':replace', 'true');
+        formData.append('jcr:primaryType', 'dam:Asset');
+
       if (mimeType) {
-        formData.append('mimeType', mimeType);
+          formData.append('jcr:content/jcr:mimeType', mimeType);
       }
+
+        // Add metadata to jcr:content/metadata node
       Object.entries(metadata).forEach(([key, value]) => {
-        formData.append(`./jcr:content/metadata/${key}`, String(value));
+          formData.append(`jcr:content/metadata/${key}`, String(value));
       });
-      const client = this.createAxiosInstance();
-      await client.post(assetPath, formData, {
+
+        const response = await client.post(assetPath, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
+
+        // Verify the asset was created
+        const verificationResponse = await client.get(`${assetPath}.json`);
+
+        return createSuccessResponse({
+          success: true,
+          assetPath,
+          fileName,
+          mimeType,
+          metadata,
+          uploadResponse: response.data,
+          assetData: verificationResponse.data,
+          timestamp: new Date().toISOString(),
+        }, 'uploadAsset');
+      } catch (error: any) {
+        // Fallback to alternative DAM API if available
+        try {
+          const damResponse = await client.post('/api/assets' + parentPath, {
+            fileName,
+            fileContent,
+            mimeType,
+            metadata
+          });
+
       return createSuccessResponse({
         success: true,
         assetPath,
         fileName,
         mimeType,
         metadata,
+            uploadResponse: damResponse.data,
+            fallbackUsed: 'DAM API',
         timestamp: new Date().toISOString(),
       }, 'uploadAsset');
+        } catch (fallbackError: any) {
+          throw handleAEMHttpError(error, 'uploadAsset');
+        }
+      }
     }, 'uploadAsset');
   }
 
@@ -811,26 +1076,46 @@ export class AEMConnector {
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
-      const updateData: any = {};
+
+      const client = this.createAxiosInstance();
+      const formData = new URLSearchParams();
+
+      // Update file content if provided
       if (fileContent) {
-        updateData.file = fileContent;
+        formData.append('file', fileContent);
         if (mimeType) {
-          updateData.mimeType = mimeType;
+          formData.append('jcr:content/jcr:mimeType', mimeType);
         }
       }
-      if (metadata) {
+
+      // Update metadata if provided
+      if (metadata && typeof metadata === 'object') {
         Object.entries(metadata).forEach(([key, value]) => {
-          updateData[`./jcr:content/metadata/${key}`] = value;
+          formData.append(`jcr:content/metadata/${key}`, String(value));
         });
       }
-      const client = this.createAxiosInstance();
-      await client.post(assetPath, updateData);
+
+      try {
+        const response = await client.post(assetPath, formData, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        });
+
+        // Verify the update
+        const verificationResponse = await client.get(`${assetPath}.json`);
+
       return createSuccessResponse({
         success: true,
         assetPath,
         updatedMetadata: metadata,
+          updateResponse: response.data,
+          assetData: verificationResponse.data,
         timestamp: new Date().toISOString(),
       }, 'updateAsset');
+      } catch (error: any) {
+        throw handleAEMHttpError(error, 'updateAsset');
+      }
     }, 'updateAsset');
   }
 
@@ -851,26 +1136,221 @@ export class AEMConnector {
     }, 'deleteAsset');
   }
 
-  async getTemplates(sitePath: string): Promise<object> {
+  async getTemplates(sitePath?: string): Promise<object> {
     return safeExecute<object>(async () => {
       const client = this.createAxiosInstance();
-      const response = await client.get(`${sitePath}.json`);
+
+      // If sitePath is provided, look for templates specific to that site
+      if (sitePath) {
+        try {
+          // Try to get site-specific templates from /conf
+          const confPath = `/conf${sitePath.replace('/content', '')}/settings/wcm/templates`;
+          const response = await client.get(`${confPath}.json`, {
+            params: { ':depth': '2' }
+          });
+
+          const templates: any[] = [];
+          if (response.data && typeof response.data === 'object') {
+            Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+              if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
+              if (value && typeof value === 'object' && value['jcr:content']) {
+                templates.push({
+                  name: key,
+                  path: `${confPath}/${key}`,
+                  title: value['jcr:content']['jcr:title'] || key,
+                  description: value['jcr:content']['jcr:description'],
+                  allowedPaths: value['jcr:content']['allowedPaths'],
+                  ranking: value['jcr:content']['ranking'] || 0
+                });
+              }
+            });
+          }
+
       return createSuccessResponse({
         sitePath,
-        templates: response.data,
+            templates,
+            totalCount: templates.length,
+            source: 'site-specific'
+          }, 'getTemplates');
+        } catch (error: any) {
+          // Fallback to global templates if site-specific not found
+        }
+      }
+
+      // Get global templates from /apps or /libs
+      try {
+        const globalPaths = ['/apps/wcm/core/content/sites/templates', '/libs/wcm/core/content/sites/templates'];
+        const allTemplates: any[] = [];
+
+        for (const templatePath of globalPaths) {
+          try {
+            const response = await client.get(`${templatePath}.json`, {
+              params: { ':depth': '2' }
+            });
+
+            if (response.data && typeof response.data === 'object') {
+              Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+                if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
+                if (value && typeof value === 'object') {
+                  allTemplates.push({
+                    name: key,
+                    path: `${templatePath}/${key}`,
+                    title: value['jcr:content']?.['jcr:title'] || key,
+                    description: value['jcr:content']?.['jcr:description'],
+                    allowedPaths: value['jcr:content']?.['allowedPaths'],
+                    ranking: value['jcr:content']?.['ranking'] || 0,
+                    source: templatePath.includes('/apps/') ? 'apps' : 'libs'
+                  });
+                }
+              });
+            }
+          } catch (pathError: any) {
+            // Continue to next path if this one fails
+          }
+        }
+
+        return createSuccessResponse({
+          sitePath: sitePath || 'global',
+          templates: allTemplates,
+          totalCount: allTemplates.length,
+          source: 'global'
       }, 'getTemplates');
+      } catch (error: any) {
+        throw handleAEMHttpError(error, 'getTemplates');
+      }
     }, 'getTemplates');
   }
 
   async getTemplateStructure(templatePath: string): Promise<object> {
     return safeExecute<object>(async () => {
       const client = this.createAxiosInstance();
-      const response = await client.get(`${templatePath}.json`);
+
+      try {
+        // Get the full template structure with deeper depth
+        const response = await client.get(`${templatePath}.infinity.json`);
+
+        const structure = {
+          path: templatePath,
+          properties: response.data['jcr:content'] || {},
+          policies: response.data['jcr:content']?.['policies'] || {},
+          structure: response.data['jcr:content']?.['structure'] || {},
+          initialContent: response.data['jcr:content']?.['initial'] || {},
+          allowedComponents: [] as string[],
+          allowedPaths: response.data['jcr:content']?.['allowedPaths'] || []
+        };
+
+        // Extract allowed components from policies
+        const extractComponents = (node: any, path: string = '') => {
+          if (!node || typeof node !== 'object') return;
+
+          if (node['components']) {
+            const componentKeys = Object.keys(node['components']);
+            structure.allowedComponents.push(...componentKeys);
+          }
+
+          Object.entries(node).forEach(([key, value]) => {
+            if (typeof value === 'object' && value !== null && !key.startsWith('jcr:')) {
+              extractComponents(value, path ? `${path}/${key}` : key);
+            }
+          });
+        };
+
+        extractComponents(structure.policies);
+
+        // Remove duplicates
+        structure.allowedComponents = [...new Set(structure.allowedComponents)];
+
       return createSuccessResponse({
         templatePath,
-        structure: response.data,
+          structure,
+          fullData: response.data
       }, 'getTemplateStructure');
+      } catch (error: any) {
+        throw handleAEMHttpError(error, 'getTemplateStructure');
+      }
     }, 'getTemplateStructure');
+  }
+
+  /**
+   * Bulk update multiple components with validation and rollback support.
+   */
+  async bulkUpdateComponents(request: any): Promise<object> {
+    return safeExecute<object>(async () => {
+      const { updates, validateFirst = true, continueOnError = false } = request;
+
+      if (!Array.isArray(updates) || updates.length === 0) {
+        throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Updates array is required and cannot be empty');
+      }
+
+      const results: any[] = [];
+      const client = this.createAxiosInstance();
+
+      // Validation phase if requested
+      if (validateFirst) {
+        for (const update of updates) {
+          try {
+            await client.get(`${update.componentPath}.json`);
+          } catch (error: any) {
+            if (error.response?.status === 404) {
+              results.push({
+                componentPath: update.componentPath,
+                success: false,
+                error: `Component not found: ${update.componentPath}`,
+                phase: 'validation'
+              });
+              if (!continueOnError) {
+                return createSuccessResponse({
+                  success: false,
+                  message: 'Bulk update failed during validation phase',
+                  results,
+                  totalUpdates: updates.length,
+                  successfulUpdates: 0
+                }, 'bulkUpdateComponents');
+              }
+            }
+          }
+        }
+      }
+
+      // Update phase
+      let successCount = 0;
+      for (const update of updates) {
+        try {
+          const result = await this.updateComponent({
+            componentPath: update.componentPath,
+            properties: update.properties
+          });
+
+          results.push({
+            componentPath: update.componentPath,
+            success: true,
+            result: result,
+            phase: 'update'
+          });
+          successCount++;
+        } catch (error: any) {
+          results.push({
+            componentPath: update.componentPath,
+            success: false,
+            error: error.message,
+            phase: 'update'
+          });
+
+          if (!continueOnError) {
+            break;
+          }
+        }
+      }
+
+      return createSuccessResponse({
+        success: successCount === updates.length,
+        message: `Bulk update completed: ${successCount}/${updates.length} successful`,
+        results,
+        totalUpdates: updates.length,
+        successfulUpdates: successCount,
+        failedUpdates: updates.length - successCount
+      }, 'bulkUpdateComponents');
+    }, 'bulkUpdateComponents');
   }
 
   /**
@@ -879,11 +1359,14 @@ export class AEMConnector {
   async getNodeContent(path: string, depth: number = 1): Promise<any> {
     return safeExecute<any>(async () => {
       const client = this.createAxiosInstance();
-      const response = await client.get(`${path}.json`, { params: { depth } });
+      const response = await client.get(`${path}.json`, {
+        params: { ':depth': depth.toString() }
+      });
       return {
         path,
         depth,
         content: response.data,
+        timestamp: new Date().toISOString()
       };
     }, 'getNodeContent');
   }

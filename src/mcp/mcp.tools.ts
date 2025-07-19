@@ -229,11 +229,6 @@ export const tools: ToolDefinition[] = [
     },
   },
   {
-    name: 'listMethods',
-    description: 'Get list of available MCP methods',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
     name: 'enhancedPageSearch',
     description: 'Intelligent page search with comprehensive fallback strategies and cross-section search',
     inputSchema: {
@@ -392,6 +387,29 @@ export const tools: ToolDefinition[] = [
       type: 'object',
       properties: { templatePath: { type: 'string' } },
       required: ['templatePath'],
+    },
+  },
+  {
+    name: 'bulkUpdateComponents',
+    description: 'Update multiple components in a single operation with validation and rollback support',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        updates: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              componentPath: { type: 'string' },
+              properties: { type: 'object' }
+            },
+            required: ['componentPath', 'properties']
+          }
+        },
+        validateFirst: { type: 'boolean' },
+        continueOnError: { type: 'boolean' }
+      },
+      required: ['updates'],
     },
   },
 ];

@@ -4,7 +4,6 @@ import { handleRequest } from '../mcp/mcp.server-handler.js';
 // import { useBasicAuth } from './app.auth.js';
 import { AEMConnector } from '../aem/aem.connector.js';
 import { MCPRequestHandler } from '../mcp/mcp.aem-handler.js';
-import { useExplorer } from '../explorer/api.explorer.js';
 import { config } from '../config.js';
 import { CliParams } from '../types.js';
 
@@ -20,10 +19,6 @@ const createServer = (params: CliParams = {}) => {
   app.use(express.urlencoded({ extended: true }));
 
   // useBasicAuth(app);
-  if (params.explorer) {
-    useExplorer(app, params);
-  }
-
   const aemConnector = new AEMConnector(params);
   const mcpHandler = new MCPRequestHandler(params, aemConnector);
 
@@ -33,15 +28,6 @@ const createServer = (params: CliParams = {}) => {
       res.json(result);
     } catch (error: any) {
       res.status(500).json({ status: 'unhealthy', error: error.message, timestamp: new Date().toISOString() });
-    }
-  });
-
-  app.get('/mcp/methods', async (req: Request, res: Response) => {
-    try {
-      const methods = mcpHandler.getAvailableMethods();
-      res.json({ methods, total: methods.length, timestamp: new Date().toISOString() });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
     }
   });
 

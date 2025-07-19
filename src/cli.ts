@@ -13,8 +13,7 @@ const argv: CliArgs = yargs(hideBin(process.argv)).options({
   host: { type: 'string', default: 'http://localhost:4502', alias: 'H' },
   user: { type: 'string', default: 'admin', alias: 'u' },
   pass: { type: 'string', default: 'admin', alias: 'p' },
-  mcpPort: { type: 'number', default: 3000, alias: 'm' },
-  explorer: { type: 'boolean', default: false, alias: 'e' },
+  mcpPort: { type: 'number', default: 3000, alias: 'm' }
 })
   .help()
   .alias('h', 'help')
@@ -24,5 +23,5 @@ if (argv.help) {
   process.exit(0); // prevent startServer from running
 }
 
-const { host, user, pass, mcpPort, explorer } = argv;
-startServer({ host, user, pass, mcpPort, explorer });
+const { host, user, pass, mcpPort } = argv;
+startServer({ host, user, pass, mcpPort });

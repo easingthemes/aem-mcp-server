@@ -33,32 +33,22 @@
     "build": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --minify",
     "build:cjs": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --format=cjs",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev src/index.ts",
-    "test:dev": "node ./dist/cli.js"
+    "test:dev": "node ./dist/cli.js",
+    "test:npm": "npm pack && npm install -g ./aem-mcp-server-$npm_package_version.tgz && aem-mcp -e -H=http://localhost:5502"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.16.0",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "tsx": "^4.20.3",
-    "yargs": "^18.0.0",
-    "zod": "^4.0.5"
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.14",
-    "@types/swagger-jsdoc": "^6.0.4",
-    "@types/swagger-ui-express": "^4.1.8",
     "@types/yargs": "^17.0.33",
-    "esbuild": "^0.25.6",
-    "ts-node-dev": "^2.0.0",
-    "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "esbuild": "^0.25.6"
   },
   "type": "module"
 }

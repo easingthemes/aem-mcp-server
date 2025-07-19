@@ -104,9 +104,6 @@ Sample for AI-based code editors or custom clients:
 ## API Documentation
 
 For detailed API documentation, please refer to the [API Docs](docs/API.md).
-- Enable the API explorer with the `-e` flag to access Swagger UI:
-```aem-mcp -e```
-- Open http://localhost:3000/api-docs to explore the API endpoints.
 
 ## Contribution
 Contributions are welcome! Please open issues or pull requests for bug fixes, features, or documentation improvements.
