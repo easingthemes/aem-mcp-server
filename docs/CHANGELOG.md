@@ -1,3 +1,10 @@
+## [1.1.5](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.4...v1.1.5) (2025-08-08)
+
+
+### Bug Fixes
+
+* remove invalid empty `prompts` ([92c64d3](https://github.com/easingthemes/aem-mcp-server/commit/92c64d3d2db3ff32ce0e2b651b22697940761dd0))
+
 ## [1.1.4](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.3...v1.1.4) (2025-07-19)
 
 
