@@ -7,9 +7,7 @@ import { createMCPServer } from './mcp.server.js';
 import { CliParams } from '../types.js';
 
 export const handleRequest = async (req: Request, res: Response, cliParams: CliParams) => {
-  console.log('Received MCP request:', req.body);
-  console.log('Route path:', req.route?.path);           // '/mcp'
-  console.log('Full path:', req.baseUrl + req.path);     // '/mcp'
+  console.log('1.Received MCP request:', req.body);
   const { jsonrpc, id, method, params } = req.body;
   if (jsonrpc !== '2.0' || !method) {
     res.status(400).json({
@@ -26,6 +24,7 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
 
     if (sessionId && transports[sessionId]) {
       // Reuse existing transport
+      console.log(`Session exists: ${sessionId}`);
       transport = transports[sessionId]
     } else if (!sessionId && isInitializeRequest(req.body)) {
       // New initialization request - use JSON response mode
@@ -41,12 +40,14 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
       });
 
       // Connect the transport to the MCP server BEFORE handling the request
+      console.log('Connecting to MCP server with CLI params:', cliParams);
       const server = createMCPServer(cliParams);
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
       return; // Already handled
     } else {
       // Invalid request - no session ID or not initialization request
+      console.log('Invalid request - no session ID or not initialization request');
       res.status(400).json({
         jsonrpc: '2.0',
         error: {

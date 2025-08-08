@@ -18,20 +18,22 @@
     "Adobe Experience Manager",
     "TypeScript"
   ],
-  "main": "./dist/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "aem-mcp": "dist/cli.js"
   },
   "files": [
-    "cli/**/*.js",
     "dist/**/*.js",
+    "build/**/*.d.ts",
     "docs/",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --minify",
-    "build:cjs": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --format=cjs",
+    "build": "npm run build:types && npm run build:ts",
+    "build:ts": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --minify",
+    "build:types": "tsc --emitDeclarationOnly",
     "start": "node dist/index.js",
     "test:dev": "node ./dist/cli.js",
     "test:npm": "npm pack && npm install -g ./aem-mcp-server-$npm_package_version.tgz && aem-mcp -e -H=http://localhost:5502"
@@ -48,7 +50,8 @@
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.14",
     "@types/yargs": "^17.0.33",
-    "esbuild": "^0.25.6"
+    "esbuild": "^0.25.6",
+    "typescript": "^5.8.3"
   },
   "type": "module"
 }

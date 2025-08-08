@@ -32,7 +32,6 @@ const createServer = (params: CliParams = {}) => {
   });
 
   app.post('/mcp', async (req: Request, res: Response) => {
-    console.log('Received MCP request:', req.body);
     await handleRequest(req, res, params);
   });
 
