@@ -1,6 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 
-import { getAEMConfig, isValidContentPath, isValidLocale, AEMConfig } from './aem.config.js';
+import {
+  getAEMConfig,
+  isValidContentPath,
+  isValidLocale,
+  AEMConfig
+} from './aem.config.js';
 import {
   AEMOperationError,
   createAEMError,
@@ -105,16 +110,10 @@ export class AEMConnector {
     }
   }
 
-  // ... All AEM operation methods (validateComponent, updateComponent, undoChanges, scanPageComponents, fetchSites, fetchLanguageMasters, fetchAvailableLocales, replicateAndPublish, executeJCRQuery, getNodeContent, searchContent, getAssetMetadata, listChildren, getPageProperties, listPages, bulkUpdateComponents, getPageTextContent, getAllTextContent, getPageImages, updateImagePath, getPageContent, createPage, deletePage, createComponent, deleteComponent, unpublishContent, activatePage, deactivatePage, uploadAsset, updateAsset, deleteAsset, getTemplates, getTemplateStructure) ...
-
-  // For brevity, only a few methods are shown here. The full implementation should include all methods as in the original JS.
-
   async validateComponent(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const locale = request.locale;
       const pagePath = request.pagePath || request.page_path;
-      const component = request.component;
-      const props = request.props;
+      const { locale, component, props } = request;
       validateComponentOperation(locale, pagePath, component, props);
       if (!isValidLocale(locale, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_LOCALE, `Locale '${locale}' is not supported`, { locale, allowedLocales: this.aemConfig.validation.allowedLocales });
@@ -167,10 +166,12 @@ export class AEMConnector {
       if (!request.properties || typeof request.properties !== 'object') {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Properties are required and must be an object');
       }
+            // Validate path is within allowed content roots
       if (!isValidContentPath(request.componentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PATH, `Component path '${request.componentPath}' is not within allowed content roots`, { path: request.componentPath, allowedRoots: Object.values(this.aemConfig.contentPaths) });
       }
       const client = this.createAxiosInstance();
+            // Check if component exists before updating
       try {
         await client.get(`${request.componentPath}.json`);
       } catch (error: any) {
@@ -182,14 +183,18 @@ export class AEMConnector {
       const formData = new URLSearchParams();
       Object.entries(request.properties).forEach(([key, value]) => {
         if (value === null || value === undefined) {
+                    // Handle property deletion with @Delete
           formData.append(`${key}@Delete`, '');
         } else if (Array.isArray(value)) {
-          value.forEach((item) => {
+          // Handle array values
+          value.forEach((item, index) => {
             formData.append(`${key}`, item.toString());
           });
         } else if (typeof value === 'object') {
+          // Handle nested objects
           formData.append(key, JSON.stringify(value));
         } else {
+          // Handle primitive values
           formData.append(key, value.toString());
         }
       });

@@ -1,6 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference types="node" />
-
 export interface AEMConfig {
   contentPaths: {
     sitesRoot: string;
@@ -33,6 +30,7 @@ export type AEMBaseConfig = {
   AEM_QUERY_DEFAULT_LIMIT?: string;
   AEM_QUERY_TIMEOUT?: string;
   AEM_MAX_DEPTH?: string;
+  AEM_ALLOWED_LOCALES?: string;
 }
 
 export function getAEMConfig(config: AEMBaseConfig): AEMConfig {
@@ -60,7 +58,7 @@ export function getAEMConfig(config: AEMBaseConfig): AEMConfig {
     },
     validation: {
       maxDepth: parseInt(config.AEM_MAX_DEPTH || '5'),
-      allowedLocales: ['en'],
+      allowedLocales: config.AEM_ALLOWED_LOCALES?.split(',') || ['en'],
     },
   };
 }
