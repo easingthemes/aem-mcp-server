@@ -1,17 +1,32 @@
 import { AEMConnector } from '../aem/aem.connector.js';
-import { config } from '../config.js';
 import { CliParams } from '../types.js';
+import { handleAEMHttpError } from '../aem/aem.errors.js';
 
 export class MCPRequestHandler {
   aemConnector: AEMConnector;
   config: CliParams;
 
-  constructor(config: CliParams, aemConnector: AEMConnector) {
+  constructor(config: CliParams) {
     this.config = config;
-    this.aemConnector = aemConnector;
+    this.aemConnector = new AEMConnector(config);
+  }
+
+  async init() {
+    if (!this.aemConnector.isInitialized) {
+      await this.aemConnector.init();
+      console.log('AEM Connector initialized.');
+    } else {
+      console.log('AEM Connector already initialized.');
+    }
   }
 
   async handleRequest(method: string, params: any) {
+      try {
+        await this.init();
+      } catch (error: any) {
+        console.error('ERROR initializing MCP Server', error.message);
+        throw handleAEMHttpError(error, 'MCP Server Initialization');
+      }
     try {
       switch (method) {
         case 'validateComponent':
@@ -84,7 +99,7 @@ export class MCPRequestHandler {
         case 'deleteAsset':
           return await this.aemConnector.deleteAsset(params);
         case 'getTemplates':
-          return await this.aemConnector.getTemplates(params.sitePath);
+          // return await this.aemConnector.getTemplates(params.sitePath);
         case 'getTemplateStructure':
           return await this.aemConnector.getTemplateStructure(params.templatePath);
         case 'bulkUpdateComponents':
@@ -104,18 +119,6 @@ export class MCPRequestHandler {
       status: 'completed',
       message: 'Mock workflow status - always returns completed',
       timestamp: new Date().toISOString()
-    };
-  }
-
-  async handleHealthCheck() {
-    const aemConnected = await this.aemConnector.testConnection();
-    return {
-      status: 'healthy',
-      aem: aemConnected ? 'connected' : 'disconnected',
-      mcp: 'ready',
-      timestamp: new Date().toISOString(),
-      version: config.APP_VERSION || '1.0.0',
-      port: this.config.mcpPort,
     };
   }
 }

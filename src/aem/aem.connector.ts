@@ -1,21 +1,7 @@
-import axios, { AxiosInstance } from 'axios';
-
-import {
-  getAEMConfig,
-  isValidContentPath,
-  isValidLocale,
-  AEMConfig
-} from './aem.config.js';
-import {
-  AEMOperationError,
-  createAEMError,
-  handleAEMHttpError,
-  safeExecute,
-  validateComponentOperation,
-  createSuccessResponse,
-  AEM_ERROR_CODES
-} from './aem.errors.js';
+import { AEMConfig, getAEMConfig, isValidContentPath, isValidLocale } from './aem.config.js';
+import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpError, safeExecute, validateComponentOperation } from './aem.errors.js';
 import { CliParams } from '../types.js';
+import { AEMFetch } from './aem.fetch.js';
 
 export interface AEMConnectorConfig {
   aem: {
@@ -35,17 +21,30 @@ export interface AEMConnectorConfig {
 }
 
 export class AEMConnector {
+  isInitialized: boolean;
   config: AEMConnectorConfig;
-  auth: { username: string; password: string };
   aemConfig: AEMConfig;
+  private readonly fetch: AEMFetch;
 
   constructor(params: CliParams) {
+    this.isInitialized = false;
     this.config = this.loadConfig(params);
     this.aemConfig = getAEMConfig({});
-    this.auth = {
+    this.fetch = new AEMFetch({
+      host: this.config.aem.host,
       username: this.config.aem.serviceUser.username,
       password: this.config.aem.serviceUser.password,
-    };
+      timeout: this.aemConfig.queries.timeoutMs,
+    });
+  }
+
+  async init() {
+    try {
+      await this.fetch.init();
+      this.isInitialized = true;
+    } catch (error: any) {
+      this.isInitialized = false;
+    }
   }
 
   loadConfig(params: CliParams = {}): AEMConnectorConfig {
@@ -73,39 +72,18 @@ export class AEMConnector {
     };
   }
 
-  createAxiosInstance(): AxiosInstance {
-    return axios.create({
-      baseURL: this.config.aem.host,
-      auth: this.auth,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    });
-  }
-
   async testConnection(): Promise<boolean> {
     try {
       // eslint-disable-next-line no-console
       console.log('Testing AEM connection to:', this.config.aem.host);
-      const client = this.createAxiosInstance();
-      const response = await client.get('/libs/granite/core/content/login.html', {
-        timeout: 5000,
-        validateStatus: (status: number) => status < 500,
-      });
+      const url = `${this.config.aem.host}/libs/granite/core/content/login.html`;
+      const response = await this.fetch.get(url, { timeout: 5000 });
       // eslint-disable-next-line no-console
       console.log('✅ AEM connection successful! Status:', response.status);
       return true;
     } catch (error: any) {
       // eslint-disable-next-line no-console
       console.error('❌ AEM connection failed:', error.message);
-      if (error.response) {
-        // eslint-disable-next-line no-console
-        console.error('   Status:', error.response.status);
-        // eslint-disable-next-line no-console
-        console.error('   URL:', error.config?.url);
-      }
       return false;
     }
   }
@@ -121,8 +99,8 @@ export class AEMConnector {
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PATH, `Path '${pagePath}' is not within allowed content roots`, { path: pagePath, allowedRoots: Object.values(this.aemConfig.contentPaths) });
       }
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${pagePath}.json`, {
+      const url = `${pagePath}.json`;
+      const response = await this.fetch.get(url, {
         params: { ':depth': '2' },
         timeout: this.aemConfig.queries.timeoutMs,
       });
@@ -166,14 +144,15 @@ export class AEMConnector {
       if (!request.properties || typeof request.properties !== 'object') {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Properties are required and must be an object');
       }
-            // Validate path is within allowed content roots
+      // Validate path is within allowed content roots
       if (!isValidContentPath(request.componentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PATH, `Component path '${request.componentPath}' is not within allowed content roots`, { path: request.componentPath, allowedRoots: Object.values(this.aemConfig.contentPaths) });
       }
-      const client = this.createAxiosInstance();
-            // Check if component exists before updating
+      const url = `${request.componentPath}.json`;
+      const checkResponse = await this.fetch.get(url);
+      // Check if component exists before updating
       try {
-        await client.get(`${request.componentPath}.json`);
+        await checkResponse.json();
       } catch (error: any) {
         if (error.response?.status === 404) {
           throw createAEMError(AEM_ERROR_CODES.COMPONENT_NOT_FOUND, `Component not found at path: ${request.componentPath}`, { componentPath: request.componentPath });
@@ -187,7 +166,7 @@ export class AEMConnector {
           formData.append(`${key}@Delete`, '');
         } else if (Array.isArray(value)) {
           // Handle array values
-          value.forEach((item, index) => {
+          value.forEach((item) => {
             formData.append(`${key}`, item.toString());
           });
         } else if (typeof value === 'object') {
@@ -198,14 +177,8 @@ export class AEMConnector {
           formData.append(key, value.toString());
         }
       });
-      const response = await client.post(request.componentPath, formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        timeout: this.aemConfig.queries.timeoutMs,
-      });
-      const verificationResponse = await client.get(`${request.componentPath}.json`);
+      const response = await this.fetch.post(request.componentPath, formData);
+      const verificationResponse = await this.fetch.get(`${request.componentPath}.json`);
       return createSuccessResponse({
         message: 'Component updated successfully',
         path: request.componentPath,
@@ -232,8 +205,8 @@ export class AEMConnector {
 
   async scanPageComponents(pagePath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${pagePath}.infinity.json`);
+      const url = `${pagePath}.infinity.json`;
+      const response = await this.fetch.get(url);
       // Extraction logic as in the original JS
       const components: any[] = [];
       const processNode = (node: any, nodePath: string) => {
@@ -267,10 +240,10 @@ export class AEMConnector {
 
   async fetchSites(): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get('/content.json', { params: { ':depth': '2' } });
+      const url = '/content.json';
+      const data = await this.fetch.get(url, { ':depth': '2' });
       const sites: any[] = [];
-      Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+      Object.entries(data).forEach(([key, value]: [string, any]) => {
         if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
         if (value && typeof value === 'object' && value['jcr:content']) {
           sites.push({
@@ -291,10 +264,10 @@ export class AEMConnector {
 
   async fetchLanguageMasters(site: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`/content/${site}.json`, { params: { ':depth': '3' } });
+      const url = `/content/${site}.json`;
+      const data = await this.fetch.get(url, { ':depth': '3' });
       const masters: any[] = [];
-      Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+      Object.entries(data).forEach(([key, value]: [string, any]) => {
         if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
         if (value && typeof value === 'object' && value['jcr:content']) {
           masters.push({
@@ -314,10 +287,10 @@ export class AEMConnector {
 
   async fetchAvailableLocales(site: string, languageMasterPath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${languageMasterPath}.json`, { params: { ':depth': '2' } });
+      const url = `${languageMasterPath}.json`;
+      const data = await this.fetch.get(url, { ':depth': '2' });
       const locales: any[] = [];
-      Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+      Object.entries(data).forEach(([key, value]: [string, any]) => {
         if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
         if (value && typeof value === 'object') {
           locales.push({
@@ -349,8 +322,8 @@ export class AEMConnector {
 
   async getAllTextContent(pagePath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${pagePath}.infinity.json`);
+      const url = `${pagePath}.infinity.json`;
+      const data = await this.fetch.get(url);
       const textContent: any[] = [];
       const processNode = (node: any, nodePath: string) => {
         if (!node || typeof node !== 'object') return;
@@ -369,10 +342,10 @@ export class AEMConnector {
           }
         });
       };
-      if (response.data['jcr:content']) {
-        processNode(response.data['jcr:content'], 'jcr:content');
+      if (data['jcr:content']) {
+        processNode(data['jcr:content'], 'jcr:content');
       } else {
-        processNode(response.data, pagePath);
+        processNode(data, pagePath);
       }
       return createSuccessResponse({
         pagePath,
@@ -389,8 +362,8 @@ export class AEMConnector {
 
   async getPageImages(pagePath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${pagePath}.infinity.json`);
+      const url = `${pagePath}.infinity.json`;
+      const data = await this.fetch.get(url);
       const images: any[] = [];
       const processNode = (node: any, nodePath: string) => {
         if (!node || typeof node !== 'object') return;
@@ -410,10 +383,10 @@ export class AEMConnector {
           }
         });
       };
-      if (response.data['jcr:content']) {
-        processNode(response.data['jcr:content'], 'jcr:content');
+      if (data['jcr:content']) {
+        processNode(data['jcr:content'], 'jcr:content');
       } else {
-        processNode(response.data, pagePath);
+        processNode(data, pagePath);
       }
       return createSuccessResponse({
         pagePath,
@@ -430,36 +403,32 @@ export class AEMConnector {
 
   async getPageContent(pagePath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${pagePath}.infinity.json`);
+      const url = `${pagePath}.infinity.json`;
+      const data = await this.fetch.get(url);
       return createSuccessResponse({
         pagePath,
-        content: response.data,
+        content: data,
       }, 'getPageContent');
     }, 'getPageContent');
   }
 
   /**
-   * List direct children under a path using AEM's JSON API.
+   * List direct children under a path using AEM JSON API.
    * Returns array of { name, path, primaryType, title }.
    */
   async listChildren(path: string, depth: number = 1): Promise<any[]> {
     return safeExecute<any[]>(async () => {
-      const client = this.createAxiosInstance();
-
       // First try direct JSON API approach
       try {
-        const response = await client.get(`${path}.${depth}.json`);
+        const data = await this.fetch.get(`${path}.${depth}.json`);
         const children: any[] = [];
-
-        if (response.data && typeof response.data === 'object') {
-          Object.entries(response.data).forEach(([key, value]: [string, any]) => {
+        if (data && typeof data === 'object') {
+          Object.entries(data).forEach(([key, value]: [string, any]) => {
             // Skip JCR system properties and metadata
             if (key.startsWith('jcr:') || key.startsWith('sling:') || key.startsWith('cq:') ||
                 key.startsWith('rep:') || key.startsWith('oak:') || key === 'jcr:content') {
               return;
             }
-
             if (value && typeof value === 'object') {
               const childPath = `${path}/${key}`;
               children.push({
@@ -477,29 +446,25 @@ export class AEMConnector {
             }
           });
         }
-
         return children;
       } catch (error: any) {
         // Fallback to QueryBuilder for cq:Page nodes specifically
         if (error.response?.status === 404 || error.response?.status === 403) {
-          const response = await client.get('/bin/querybuilder.json', {
-        params: {
-              path: path,
-          type: 'cq:Page',
-              'p.nodedepth': '1',
-              'p.limit': '1000',
-              'p.hits': 'full'
-        },
-      });
-      const children = (response.data.hits || []).map((hit: any) => ({
+          const data = await this.fetch.get('/bin/querybuilder.json', {
+            path: path,
+            type: 'cq:Page',
+            'p.nodedepth': '1',
+            'p.limit': '1000',
+            'p.hits': 'full'
+          });
+          return (data.hits || []).map((hit: any) => ({
             name: hit.name || hit.path?.split('/').pop(),
-        path: hit.path,
+            path: hit.path,
             primaryType: hit['jcr:primaryType'] || 'cq:Page',
             title: hit['jcr:content/jcr:title'] || hit.title || hit.name,
             lastModified: hit['jcr:content/cq:lastModified'],
             resourceType: hit['jcr:content/sling:resourceType']
-      }));
-      return children;
+          }));
         }
         throw error;
       }
@@ -511,29 +476,22 @@ export class AEMConnector {
    */
   async listPages(siteRoot: string, depth: number = 1, limit: number = 20): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-
       // First try direct JSON API approach for better performance
       try {
-        const response = await client.get(`${siteRoot}.${depth}.json`);
+        const data = await this.fetch.get(`${siteRoot}.${depth}.json`);
         const pages: any[] = [];
-
         const processNode = (node: any, currentPath: string, currentDepth: number) => {
           if (currentDepth > depth || pages.length >= limit) return;
-
           Object.entries(node).forEach(([key, value]: [string, any]) => {
             if (pages.length >= limit) return;
-
             // Skip JCR system properties
             if (key.startsWith('jcr:') || key.startsWith('sling:') || key.startsWith('cq:') ||
                 key.startsWith('rep:') || key.startsWith('oak:')) {
               return;
             }
-
             if (value && typeof value === 'object') {
               const childPath = `${currentPath}/${key}`;
               const primaryType = value['jcr:primaryType'];
-
               // Only include cq:Page nodes
               if (primaryType === 'cq:Page') {
                 pages.push({
@@ -548,7 +506,6 @@ export class AEMConnector {
                   type: 'page'
                 });
               }
-
               // Recursively process child nodes if within depth limit
               if (currentDepth < depth) {
                 processNode(value, childPath, currentDepth + 1);
@@ -556,11 +513,9 @@ export class AEMConnector {
             }
           });
         };
-
-        if (response.data && typeof response.data === 'object') {
-          processNode(response.data, siteRoot, 0);
+        if (data && typeof data === 'object') {
+          processNode(data, siteRoot, 0);
         }
-
         return createSuccessResponse({
           siteRoot,
           pages,
@@ -569,38 +524,35 @@ export class AEMConnector {
           limit,
           totalChildrenScanned: pages.length
         }, 'listPages');
-
       } catch (error: any) {
+        console.warn('JSON API failed, falling back to QueryBuilder:', error.message);
         // Fallback to QueryBuilder if JSON API fails
         if (error.response?.status === 404 || error.response?.status === 403) {
-          const response = await client.get('/bin/querybuilder.json', {
-        params: {
-          path: siteRoot,
-          type: 'cq:Page',
-              'p.nodedepth': depth.toString(),
-              'p.limit': limit.toString(),
-              'p.hits': 'full'
-        },
-      });
-      const pages = (response.data.hits || []).map((hit: any) => ({
+          const data = await this.fetch.get('/bin/querybuilder.json', {
+            path: siteRoot,
+            type: 'cq:Page',
+            'p.nodedepth': depth.toString(),
+            'p.limit': limit.toString(),
+            'p.hits': 'full'
+          });
+          const pages = (data.hits || []).map((hit: any) => ({
             name: hit.name || hit.path?.split('/').pop(),
-        path: hit.path,
-        primaryType: 'cq:Page',
+            path: hit.path,
+            primaryType: 'cq:Page',
             title: hit['jcr:content/jcr:title'] || hit.title || hit.name,
             template: hit['jcr:content/cq:template'],
             lastModified: hit['jcr:content/cq:lastModified'],
             lastModifiedBy: hit['jcr:content/cq:lastModifiedBy'],
             resourceType: hit['jcr:content/sling:resourceType'],
             type: 'page'
-      }));
-
+          }));
           return createSuccessResponse({
-        siteRoot,
-        pages,
-        pageCount: pages.length,
+            siteRoot,
+            pages,
+            pageCount: pages.length,
             depth,
             limit,
-            totalChildrenScanned: response.data.total || pages.length,
+            totalChildrenScanned: data.total || pages.length,
             fallbackUsed: 'QueryBuilder'
           }, 'listPages');
         }
@@ -615,7 +567,7 @@ export class AEMConnector {
    */
   async executeJCRQuery(query: string, limit: number = 20): Promise<object> {
     return safeExecute<object>(async () => {
-      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      if (!query || query.trim().length === 0) {
         throw new Error('Query is required and must be a non-empty string. Note: Only QueryBuilder fulltext is supported, not JCR SQL2.');
       }
       // Basic security validation
@@ -623,19 +575,16 @@ export class AEMConnector {
       if (/drop|delete|update|insert|exec|script|\.|<script/i.test(lower) || query.length > 1000) {
         throw new Error('Query contains potentially unsafe patterns or is too long');
       }
-      const client = this.createAxiosInstance();
-      const response = await client.get('/bin/querybuilder.json', {
-        params: {
-          path: '/content',
-          type: 'cq:Page',
-          fulltext: query,
-          'p.limit': limit
-        }
+      const data = await this.fetch.get('/bin/querybuilder.json', {
+        path: '/content',
+        type: 'cq:Page',
+        fulltext: query,
+        'p.limit': limit
       });
       return {
         query,
-        results: response.data.hits || [],
-        total: response.data.total || 0,
+        results: data.hits || [],
+        total: data.total || 0,
         limit
       };
     }, 'executeJCRQuery');
@@ -643,21 +592,20 @@ export class AEMConnector {
 
   async getPageProperties(pagePath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${pagePath}/jcr:content.json`);
-      const content = response.data;
+      const url = `${pagePath}/jcr:content.json`;
+      const data = await this.fetch.get(url);
       const properties = {
-        title: content['jcr:title'],
-        description: content['jcr:description'],
-        template: content['cq:template'],
-        lastModified: content['cq:lastModified'],
-        lastModifiedBy: content['cq:lastModifiedBy'],
-        created: content['jcr:created'],
-        createdBy: content['jcr:createdBy'],
-        primaryType: content['jcr:primaryType'],
-        resourceType: content['sling:resourceType'],
-        tags: content['cq:tags'] || [],
-        properties: content,
+        title: data['jcr:title'],
+        description: data['jcr:description'],
+        template: data['cq:template'],
+        lastModified: data['cq:lastModified'],
+        lastModifiedBy: data['jcr:createdBy'],
+        created: data['jcr:created'],
+        createdBy: data['jcr:createdBy'],
+        primaryType: data['jcr:primaryType'],
+        resourceType: data['sling:resourceType'],
+        tags: data['cq:tags'] || [],
+        properties: data,
       };
       return createSuccessResponse({
         pagePath,
@@ -668,26 +616,25 @@ export class AEMConnector {
 
   async searchContent(params: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(this.config.aem.endpoints.query, { params });
+      const data = await this.fetch.get(this.config.aem.endpoints.query, params);
       return createSuccessResponse({
         params,
-        results: response.data.hits || [],
-        total: response.data.total || 0,
-        rawResponse: response.data,
+        results: data.hits || [],
+        total: data.total || 0,
+        rawResponse: data,
       }, 'searchContent');
     }, 'searchContent');
   }
 
   async getAssetMetadata(assetPath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${assetPath}.json`);
-      const metadata = response.data['jcr:content']?.metadata || {};
+      const url = `${assetPath}.json`;
+      const data = await this.fetch.get(url);
+      const metadata = data['jcr:content']?.metadata || {};
       return createSuccessResponse({
         assetPath,
         metadata,
-        fullData: response.data,
+        fullData: data,
       }, 'getAssetMetadata');
     }, 'getAssetMetadata');
   }
@@ -700,8 +647,7 @@ export class AEMConnector {
       }
       const pageName = name || title.replace(/\s+/g, '-').toLowerCase();
       const newPagePath = `${parentPath}/${pageName}`;
-      const client = this.createAxiosInstance();
-      await client.post(newPagePath, {
+      await this.fetch.post(newPagePath, {
         'jcr:primaryType': 'cq:Page',
         'jcr:title': title,
         'cq:template': template,
@@ -720,37 +666,31 @@ export class AEMConnector {
 
   async deletePage(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { pagePath, force = false } = request;
+      const { pagePath } = request;
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
-      const client = this.createAxiosInstance();
+      // Try 'DELETE' first
       let deleted = false;
       try {
-        await client.delete(pagePath);
+        await this.fetch.delete(pagePath);
         deleted = true;
       } catch (err: any) {
-        if (err.response && err.response.status === 405) {
+        // Fallback to POST /bin/wcmcommand or Sling POST servlet
+        try {
+          await this.fetch.post('/bin/wcmcommand', {
+            cmd: 'deletePage',
+            path: pagePath,
+            force: request.force ? 'true' : 'false',
+          });
+          deleted = true;
+        } catch (postErr: any) {
           try {
-            await client.post('/bin/wcmcommand', {
-              cmd: 'deletePage',
-              path: pagePath,
-              force: force.toString(),
-            });
+            await this.fetch.post(pagePath, { ':operation': 'delete' });
             deleted = true;
-          } catch (postErr: any) {
-            // Fallback to Sling POST servlet
-            try {
-              await client.post(pagePath, { ':operation': 'delete' });
-              deleted = true;
-            } catch (slingErr: any) {
-              console.error('Sling POST delete failed:', slingErr.response?.status, slingErr.response?.data);
-              throw slingErr;
-            }
+          } catch (slingErr: any) {
+            throw slingErr;
           }
-        } else {
-          console.error('DELETE failed:', err.response?.status, err.response?.data);
-          throw err;
         }
       }
       return createSuccessResponse({
@@ -769,8 +709,7 @@ export class AEMConnector {
       }
       const componentName = name || `${componentType}_${Date.now()}`;
       const componentNodePath = componentPath || `${pagePath}/jcr:content/${componentName}`;
-      const client = this.createAxiosInstance();
-      await client.post(componentNodePath, {
+      await this.fetch.post(componentNodePath, {
         'jcr:primaryType': 'nt:unstructured',
         'sling:resourceType': resourceType,
         ...properties,
@@ -780,7 +719,7 @@ export class AEMConnector {
       });
       return createSuccessResponse({
         success: true,
-        componentPath,
+        componentPath: componentNodePath,
         componentType,
         resourceType,
         properties,
@@ -791,27 +730,20 @@ export class AEMConnector {
 
   async deleteComponent(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { componentPath, force = false } = request;
+      const { componentPath } = request;
       if (!isValidContentPath(componentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid component path: ${String(componentPath)}`, { componentPath });
       }
-      const client = this.createAxiosInstance();
       let deleted = false;
       try {
-        await client.delete(componentPath);
+        await this.fetch.delete(componentPath);
         deleted = true;
       } catch (err: any) {
-        if (err.response && err.response.status === 405) {
-          try {
-            await client.post(componentPath, { ':operation': 'delete' });
-            deleted = true;
-          } catch (slingErr: any) {
-            console.error('Sling POST delete failed:', slingErr.response?.status, slingErr.response?.data);
-            throw slingErr;
-          }
-        } else {
-          console.error('DELETE failed:', err.response?.status, err.response?.data);
-          throw err;
+        try {
+          await this.fetch.post(componentPath, { ':operation': 'delete' });
+          deleted = true;
+        } catch (slingErr: any) {
+          throw slingErr;
         }
       }
       return createSuccessResponse({
@@ -828,43 +760,31 @@ export class AEMConnector {
       if (!contentPaths || (Array.isArray(contentPaths) && contentPaths.length === 0)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Content paths array is required and cannot be empty', { contentPaths });
       }
-      const client = this.createAxiosInstance();
       const results: any[] = [];
-
-      // Process each path individually using the correct AEM replication API
       for (const path of Array.isArray(contentPaths) ? contentPaths : [contentPaths]) {
         try {
-          // Use the correct AEM replication servlet endpoint
           const formData = new URLSearchParams();
           formData.append('cmd', 'Deactivate');
           formData.append('path', path);
           formData.append('ignoredeactivated', 'false');
           formData.append('onlymodified', 'false');
-
           if (unpublishTree) {
             formData.append('deep', 'true');
           }
-
-          const response = await client.post('/bin/replicate.json', formData, {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-      });
-
+          const data = await this.fetch.post('/bin/replicate.json', formData);
           results.push({
             path,
-        success: true,
-            response: response.data
+            success: true,
+            response: data
           });
         } catch (error: any) {
           results.push({
             path,
             success: false,
-            error: error.response?.data || error.message
+            error: error.message
           });
         }
       }
-
       return createSuccessResponse({
         success: results.every(r => r.success),
         results,
@@ -881,51 +801,39 @@ export class AEMConnector {
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
-      const client = this.createAxiosInstance();
-
       try {
-        // Use the correct AEM replication servlet endpoint
         const formData = new URLSearchParams();
         formData.append('cmd', 'Activate');
         formData.append('path', pagePath);
         formData.append('ignoredeactivated', 'false');
         formData.append('onlymodified', 'false');
-
         if (activateTree) {
           formData.append('deep', 'true');
         }
-
-        const response = await client.post('/bin/replicate.json', formData, {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        });
-
+        const data = await this.fetch.post('/bin/replicate.json', formData);
         return createSuccessResponse({
           success: true,
           activatedPath: pagePath,
           activateTree,
-          response: response.data,
+          response: data,
           timestamp: new Date().toISOString(),
         }, 'activatePage');
       } catch (error: any) {
-        // Fallback to alternative replication methods
         try {
-          // Try using the WCM command servlet
-          const wcmResponse = await client.post('/bin/wcmcommand', {
+          const data = await this.fetch.post('/bin/wcmcommand', {
             cmd: 'activate',
-        path: pagePath,
-        ignoredeactivated: false,
-        onlymodified: false,
-      });
-      return createSuccessResponse({
-        success: true,
-        activatedPath: pagePath,
-        activateTree,
-            response: wcmResponse.data,
+            path: pagePath,
+            ignoredeactivated: false,
+            onlymodified: false,
+          });
+          return createSuccessResponse({
+            success: true,
+            activatedPath: pagePath,
+            activateTree,
+            response: data,
             fallbackUsed: 'WCM Command',
-        timestamp: new Date().toISOString(),
-      }, 'activatePage');
+            timestamp: new Date().toISOString(),
+          }, 'activatePage');
         } catch (fallbackError: any) {
           throw handleAEMHttpError(error, 'activatePage');
         }
@@ -939,51 +847,39 @@ export class AEMConnector {
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
-      const client = this.createAxiosInstance();
-
       try {
-        // Use the correct AEM replication servlet endpoint
         const formData = new URLSearchParams();
         formData.append('cmd', 'Deactivate');
         formData.append('path', pagePath);
         formData.append('ignoredeactivated', 'false');
         formData.append('onlymodified', 'false');
-
         if (deactivateTree) {
           formData.append('deep', 'true');
         }
-
-        const response = await client.post('/bin/replicate.json', formData, {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        });
-
+        const data = await this.fetch.post('/bin/replicate.json', formData);
         return createSuccessResponse({
           success: true,
           deactivatedPath: pagePath,
           deactivateTree,
-          response: response.data,
+          response: data,
           timestamp: new Date().toISOString(),
         }, 'deactivatePage');
       } catch (error: any) {
-        // Fallback to alternative replication methods
         try {
-          // Try using the WCM command servlet
-          const wcmResponse = await client.post('/bin/wcmcommand', {
+          const data = await this.fetch.post('/bin/wcmcommand', {
             cmd: 'deactivate',
-        path: pagePath,
-        ignoredeactivated: false,
-        onlymodified: false,
-      });
-      return createSuccessResponse({
-        success: true,
-        deactivatedPath: pagePath,
-        deactivateTree,
-            response: wcmResponse.data,
+            path: pagePath,
+            ignoredeactivated: false,
+            onlymodified: false,
+          });
+          return createSuccessResponse({
+            success: true,
+            deactivatedPath: pagePath,
+            deactivateTree,
+            response: data,
             fallbackUsed: 'WCM Command',
-        timestamp: new Date().toISOString(),
-      }, 'deactivatePage');
+            timestamp: new Date().toISOString(),
+          }, 'deactivatePage');
         } catch (fallbackError: any) {
           throw handleAEMHttpError(error, 'deactivatePage');
         }
@@ -997,77 +893,63 @@ export class AEMConnector {
       if (!isValidContentPath(parentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid parent path: ${String(parentPath)}`, { parentPath });
       }
-
-      const client = this.createAxiosInstance();
       const assetPath = `${parentPath}/${fileName}`;
-
       try {
         // Use proper AEM DAM asset upload via Sling POST servlet
-      const formData = new URLSearchParams();
-
+        const formData = new URLSearchParams();
         // Set the file content (base64 or binary)
-      if (typeof fileContent === 'string') {
+        if (typeof fileContent === 'string') {
           // Assume base64 encoded content
-        formData.append('file', fileContent);
-      } else {
-        formData.append('file', fileContent.toString());
-      }
-
+          formData.append('file', fileContent);
+        } else {
+          formData.append('file', fileContent.toString());
+        }
         // Set required Sling POST parameters for asset creation
-      formData.append('fileName', fileName);
+        formData.append('fileName', fileName);
         formData.append(':operation', 'import');
         formData.append(':contentType', 'json');
         formData.append(':replace', 'true');
         formData.append('jcr:primaryType', 'dam:Asset');
-
-      if (mimeType) {
+        if (mimeType) {
           formData.append('jcr:content/jcr:mimeType', mimeType);
-      }
-
+        }
         // Add metadata to jcr:content/metadata node
-      Object.entries(metadata).forEach(([key, value]) => {
+        Object.entries(metadata).forEach(([key, value]) => {
           formData.append(`jcr:content/metadata/${key}`, String(value));
-      });
-
-        const response = await client.post(assetPath, formData, {
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-
+        });
+        // Use fetch.post helper for upload
+        const uploadResponse = await this.fetch.post(assetPath, formData);
         // Verify the asset was created
-        const verificationResponse = await client.get(`${assetPath}.json`);
-
+        const assetData = await this.fetch.get(`${assetPath}.json`);
         return createSuccessResponse({
           success: true,
           assetPath,
           fileName,
           mimeType,
           metadata,
-          uploadResponse: response.data,
-          assetData: verificationResponse.data,
+          uploadResponse,
+          assetData,
           timestamp: new Date().toISOString(),
         }, 'uploadAsset');
       } catch (error: any) {
         // Fallback to alternative DAM API if available
         try {
-          const damResponse = await client.post('/api/assets' + parentPath, {
+          const damResponse = await this.fetch.post('/api/assets' + parentPath, {
             fileName,
             fileContent,
             mimeType,
             metadata
           });
-
-      return createSuccessResponse({
-        success: true,
-        assetPath,
-        fileName,
-        mimeType,
-        metadata,
-            uploadResponse: damResponse.data,
+          return createSuccessResponse({
+            success: true,
+            assetPath,
+            fileName,
+            mimeType,
+            metadata,
+            uploadResponse: damResponse,
             fallbackUsed: 'DAM API',
-        timestamp: new Date().toISOString(),
-      }, 'uploadAsset');
+            timestamp: new Date().toISOString(),
+          }, 'uploadAsset');
         } catch (fallbackError: any) {
           throw handleAEMHttpError(error, 'uploadAsset');
         }
@@ -1081,10 +963,7 @@ export class AEMConnector {
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
-
-      const client = this.createAxiosInstance();
       const formData = new URLSearchParams();
-
       // Update file content if provided
       if (fileContent) {
         formData.append('file', fileContent);
@@ -1092,32 +971,24 @@ export class AEMConnector {
           formData.append('jcr:content/jcr:mimeType', mimeType);
         }
       }
-
       // Update metadata if provided
       if (metadata && typeof metadata === 'object') {
         Object.entries(metadata).forEach(([key, value]) => {
           formData.append(`jcr:content/metadata/${key}`, String(value));
         });
       }
-
       try {
-        const response = await client.post(assetPath, formData, {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        });
-
+        const updateResponse = await this.fetch.post(assetPath, formData);
         // Verify the update
-        const verificationResponse = await client.get(`${assetPath}.json`);
-
-      return createSuccessResponse({
-        success: true,
-        assetPath,
-        updatedMetadata: metadata,
-          updateResponse: response.data,
-          assetData: verificationResponse.data,
-        timestamp: new Date().toISOString(),
-      }, 'updateAsset');
+        const assetData = await this.fetch.get(`${assetPath}.json`);
+        return createSuccessResponse({
+          success: true,
+          assetPath,
+          updatedMetadata: metadata,
+          updateResponse,
+          assetData,
+          timestamp: new Date().toISOString(),
+        }, 'updateAsset');
       } catch (error: any) {
         throw handleAEMHttpError(error, 'updateAsset');
       }
@@ -1130,8 +1001,7 @@ export class AEMConnector {
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
-      const client = this.createAxiosInstance();
-      await client.delete(assetPath);
+      await this.fetch.delete(assetPath);
       return createSuccessResponse({
         success: true,
         deletedPath: assetPath,
@@ -1141,135 +1011,41 @@ export class AEMConnector {
     }, 'deleteAsset');
   }
 
-  async getTemplates(sitePath?: string): Promise<object> {
-    return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-
-      // If sitePath is provided, look for templates specific to that site
-      if (sitePath) {
-        try {
-          // Try to get site-specific templates from /conf
-          const confPath = `/conf${sitePath.replace('/content', '')}/settings/wcm/templates`;
-          const response = await client.get(`${confPath}.json`, {
-            params: { ':depth': '2' }
-          });
-
-          const templates: any[] = [];
-          if (response.data && typeof response.data === 'object') {
-            Object.entries(response.data).forEach(([key, value]: [string, any]) => {
-              if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
-              if (value && typeof value === 'object' && value['jcr:content']) {
-                templates.push({
-                  name: key,
-                  path: `${confPath}/${key}`,
-                  title: value['jcr:content']['jcr:title'] || key,
-                  description: value['jcr:content']['jcr:description'],
-                  allowedPaths: value['jcr:content']['allowedPaths'],
-                  ranking: value['jcr:content']['ranking'] || 0
-                });
-              }
-            });
-          }
-
-      return createSuccessResponse({
-        sitePath,
-            templates,
-            totalCount: templates.length,
-            source: 'site-specific'
-          }, 'getTemplates');
-        } catch (error: any) {
-          // Fallback to global templates if site-specific not found
-        }
-      }
-
-      // Get global templates from /apps or /libs
-      try {
-        const globalPaths = ['/apps/wcm/core/content/sites/templates', '/libs/wcm/core/content/sites/templates'];
-        const allTemplates: any[] = [];
-
-        for (const templatePath of globalPaths) {
-          try {
-            const response = await client.get(`${templatePath}.json`, {
-              params: { ':depth': '2' }
-            });
-
-            if (response.data && typeof response.data === 'object') {
-              Object.entries(response.data).forEach(([key, value]: [string, any]) => {
-                if (key.startsWith('jcr:') || key.startsWith('sling:')) return;
-                if (value && typeof value === 'object') {
-                  allTemplates.push({
-                    name: key,
-                    path: `${templatePath}/${key}`,
-                    title: value['jcr:content']?.['jcr:title'] || key,
-                    description: value['jcr:content']?.['jcr:description'],
-                    allowedPaths: value['jcr:content']?.['allowedPaths'],
-                    ranking: value['jcr:content']?.['ranking'] || 0,
-                    source: templatePath.includes('/apps/') ? 'apps' : 'libs'
-                  });
-                }
-              });
-            }
-          } catch (pathError: any) {
-            // Continue to next path if this one fails
-          }
-        }
-
-        return createSuccessResponse({
-          sitePath: sitePath || 'global',
-          templates: allTemplates,
-          totalCount: allTemplates.length,
-          source: 'global'
-      }, 'getTemplates');
-      } catch (error: any) {
-        throw handleAEMHttpError(error, 'getTemplates');
-      }
-    }, 'getTemplates');
-  }
-
   async getTemplateStructure(templatePath: string): Promise<object> {
     return safeExecute<object>(async () => {
-      const client = this.createAxiosInstance();
-
       try {
         // Get the full template structure with deeper depth
-        const response = await client.get(`${templatePath}.infinity.json`);
-
+        const response = await this.fetch.get(`${templatePath}.infinity.json`);
         const structure = {
           path: templatePath,
-          properties: response.data['jcr:content'] || {},
-          policies: response.data['jcr:content']?.['policies'] || {},
-          structure: response.data['jcr:content']?.['structure'] || {},
-          initialContent: response.data['jcr:content']?.['initial'] || {},
+          properties: response['jcr:content'] || {},
+          policies: response['jcr:content']?.['policies'] || {},
+          structure: response['jcr:content']?.['structure'] || {},
+          initialContent: response['jcr:content']?.['initial'] || {},
           allowedComponents: [] as string[],
-          allowedPaths: response.data['jcr:content']?.['allowedPaths'] || []
+          allowedPaths: response['jcr:content']?.['allowedPaths'] || []
         };
-
         // Extract allowed components from policies
         const extractComponents = (node: any, path: string = '') => {
           if (!node || typeof node !== 'object') return;
-
           if (node['components']) {
             const componentKeys = Object.keys(node['components']);
             structure.allowedComponents.push(...componentKeys);
           }
-
           Object.entries(node).forEach(([key, value]) => {
             if (typeof value === 'object' && value !== null && !key.startsWith('jcr:')) {
               extractComponents(value, path ? `${path}/${key}` : key);
             }
           });
         };
-
         extractComponents(structure.policies);
-
         // Remove duplicates
         structure.allowedComponents = [...new Set(structure.allowedComponents)];
-
-      return createSuccessResponse({
-        templatePath,
+        return createSuccessResponse({
+          templatePath,
           structure,
-          fullData: response.data
-      }, 'getTemplateStructure');
+          fullData: response
+        }, 'getTemplateStructure');
       } catch (error: any) {
         throw handleAEMHttpError(error, 'getTemplateStructure');
       }
@@ -1282,19 +1058,15 @@ export class AEMConnector {
   async bulkUpdateComponents(request: any): Promise<object> {
     return safeExecute<object>(async () => {
       const { updates, validateFirst = true, continueOnError = false } = request;
-
       if (!Array.isArray(updates) || updates.length === 0) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Updates array is required and cannot be empty');
       }
-
       const results: any[] = [];
-      const client = this.createAxiosInstance();
-
       // Validation phase if requested
       if (validateFirst) {
         for (const update of updates) {
           try {
-            await client.get(`${update.componentPath}.json`);
+            await this.fetch.get(`${update.componentPath}.json`);
           } catch (error: any) {
             if (error.response?.status === 404) {
               results.push({
@@ -1316,7 +1088,6 @@ export class AEMConnector {
           }
         }
       }
-
       // Update phase
       let successCount = 0;
       for (const update of updates) {
@@ -1325,7 +1096,6 @@ export class AEMConnector {
             componentPath: update.componentPath,
             properties: update.properties
           });
-
           results.push({
             componentPath: update.componentPath,
             success: true,
@@ -1340,13 +1110,11 @@ export class AEMConnector {
             error: error.message,
             phase: 'update'
           });
-
           if (!continueOnError) {
             break;
           }
         }
       }
-
       return createSuccessResponse({
         success: successCount === updates.length,
         message: `Bulk update completed: ${successCount}/${updates.length} successful`,
@@ -1363,14 +1131,12 @@ export class AEMConnector {
    */
   async getNodeContent(path: string, depth: number = 1): Promise<any> {
     return safeExecute<any>(async () => {
-      const client = this.createAxiosInstance();
-      const response = await client.get(`${path}.json`, {
-        params: { ':depth': depth.toString() }
-      });
+      const url = `${path}.json`;
+      const content = await this.fetch.get(url, { ':depth': depth.toString() });
       return {
         path,
         depth,
-        content: response.data,
+        content,
         timestamp: new Date().toISOString()
       };
     }, 'getNodeContent');
