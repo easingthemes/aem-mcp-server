@@ -5,6 +5,7 @@ import { handleRequest } from '../mcp/mcp.server-handler.js';
 import { AEMConnector } from '../aem/aem.connector.js';
 import { config } from '../config.js';
 import { CliParams } from '../types.js';
+import { LOGGER } from '../utils/logger.js';
 
 const createServer = (params: CliParams = {}) => {
   const app = express();
@@ -22,11 +23,11 @@ const createServer = (params: CliParams = {}) => {
 
   app.get('/health', async (req: Request, res: Response) => {
     try {
-      await aemConnector.init();
-      const aemConnected = await aemConnector.testConnection();
+      const { aem, auth } = await aemConnector.testConnection();
       const result = {
         status: 'healthy',
-        aem: aemConnected ? 'connected' : 'disconnected',
+        aem: aem ? 'connected' : 'disconnected',
+        auth: auth ? 'authorized' : 'not authorized',
         mcp: 'ready',
         timestamp: new Date().toISOString(),
         version: config.APP_VERSION || '1.0.0',
@@ -46,7 +47,7 @@ const createServer = (params: CliParams = {}) => {
   });
 
   app.delete('/mcp', async (req: Request, res: Response) => {
-    console.log('Received DELETE MCP request');
+    LOGGER.log('Received DELETE MCP request');
     res.writeHead(405).end(JSON.stringify({
       jsonrpc: "2.0",
       error: {
@@ -76,18 +77,18 @@ const createServer = (params: CliParams = {}) => {
 }
 
 export const startServer = (params: CliParams = {}) => {
-  const { mcpPort = 3000 } = params || {};
+  const { mcpPort = 8502 } = params || {};
   const app = createServer(params);
   app.listen(mcpPort, (error) => {
     if (error) {
-      console.error('Failed to start server:', error);
+      LOGGER.error('Failed to start server:', error);
       process.exit(1);
     }
-    console.log(`AEM MCP Server listening on port ${mcpPort}`);
+    LOGGER.log(`0. AEM MCP Server listening on port ${mcpPort}`);
   });
 };
 
 process.on('SIGINT', async () => {
-  console.log('Shutting down server...');
+  LOGGER.log('Shutting down server...');
   process.exit(0);
 });

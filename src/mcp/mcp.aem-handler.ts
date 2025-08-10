@@ -1,6 +1,7 @@
 import { AEMConnector } from '../aem/aem.connector.js';
 import { CliParams } from '../types.js';
 import { handleAEMHttpError } from '../aem/aem.errors.js';
+import { LOGGER } from '../utils/logger.js';
 
 export class MCPRequestHandler {
   aemConnector: AEMConnector;
@@ -14,19 +15,19 @@ export class MCPRequestHandler {
   async init() {
     if (!this.aemConnector.isInitialized) {
       await this.aemConnector.init();
-      console.log('AEM Connector initialized.');
+      LOGGER.log('AEM Connector initialized.');
     } else {
-      console.log('AEM Connector already initialized.');
+      LOGGER.log('AEM Connector already initialized.');
     }
   }
 
   async handleRequest(method: string, params: any) {
-      try {
-        await this.init();
-      } catch (error: any) {
-        console.error('ERROR initializing MCP Server', error.message);
-        throw handleAEMHttpError(error, 'MCP Server Initialization');
-      }
+    try {
+      await this.init();
+    } catch (error: any) {
+      LOGGER.error('ERROR initializing MCP Server', error.message);
+      throw handleAEMHttpError(error, 'MCP Server Initialization');
+    }
     try {
       switch (method) {
         case 'validateComponent':

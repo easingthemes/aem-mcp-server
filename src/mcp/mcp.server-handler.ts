@@ -5,9 +5,10 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { transports } from './mcp.transports.js';
 import { createMCPServer } from './mcp.server.js';
 import { CliParams } from '../types.js';
+import { LOGGER } from '../utils/logger.js';
 
 export const handleRequest = async (req: Request, res: Response, cliParams: CliParams) => {
-  console.log('1.Received MCP request:', req.body);
+  LOGGER.log('1.Received MCP request:', req.body);
   const { jsonrpc, id, method, params } = req.body;
   if (jsonrpc !== '2.0' || !method) {
     res.status(400).json({
@@ -24,7 +25,7 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
 
     if (sessionId && transports[sessionId]) {
       // Reuse existing transport
-      console.log(`Session exists: ${sessionId}`);
+      LOGGER.log(`Session exists: ${sessionId}`);
       transport = transports[sessionId]
     } else if (!sessionId && isInitializeRequest(req.body)) {
       // New initialization request - use JSON response mode
@@ -34,20 +35,20 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
         onsessioninitialized: (sessionId) => {
           // Store the transport by session ID when session is initialized
           // This avoids race conditions where requests might come in before the session is stored
-          console.log(`Session initialized with ID: ${sessionId}`);
+          LOGGER.log(`Session initialized with ID: ${sessionId}`);
           transports[sessionId] = transport;
         }
       });
 
       // Connect the transport to the MCP server BEFORE handling the request
-      console.log('Connecting to MCP server with CLI params:', cliParams);
+      LOGGER.log('Connecting to MCP server with CLI params:', cliParams);
       const server = createMCPServer(cliParams);
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
       return; // Already handled
     } else {
       // Invalid request - no session ID or not initialization request
-      console.log('Invalid request - no session ID or not initialization request');
+      LOGGER.log('Invalid request - no session ID or not initialization request');
       res.status(400).json({
         jsonrpc: '2.0',
         error: {
@@ -62,7 +63,7 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
     // Handle the request with existing transport - no need to reconnect
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
-    console.error('Error handling MCP request:', error);
+    LOGGER.error('Error handling MCP request:', error);
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: '2.0',
