@@ -29,7 +29,7 @@ This project is designed for non-technical persons who want to manage AEM via na
 - Access to an AEM instance (local or remote)
 
 ### Add AEM MCP to AI IDE
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=JTdCJTIyY29tbWFuZCUyMiUzQSUyMm5weCUyMC0teWVzJTIwLXAlMjBhZW0tbWNwLXNlcnZlciUyMC0tJTIwYWVtLW1jcCUyMC1IJTNEaHR0cCUzQSUyRiUyRmxvY2FsaG9zdCUzQTQ1MDIlMjIlMkMlMjJ0eXBlJTIyJTNBJTIyc3RyZWFtYWJsZS1odHRwJTIyJTJDJTIyc3RyZWFtYWJsZSUyMiUzQXRydWUlMkMlMjJ1cmwlMjIlM0ElMjJodHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBODUwMiUyRm1jcCUyMiU3RA%3D%3D)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=JTdCJTIydXJsJTIyJTNBJTIyaHR0cCUzQSUyRiUyRjEyNy4wLjAuMSUzQTg1MDIlMkZtY3AlMjIlN0Q%3D)
 
 OR:
 
