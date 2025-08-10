@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.5...v1.2.0) (2025-08-10)
+
+
+### Features
+
+* add AEMaaCS OAuth support, add fetch retry on 401 ([0f53d1a](https://github.com/easingthemes/aem-mcp-server/commit/0f53d1a4bc8bc622f018f68c021d95e4a0791e78))
+
 ## [1.1.5](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.4...v1.1.5) (2025-08-08)
 
 
