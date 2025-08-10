@@ -1,23 +1,24 @@
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema, InitializeRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { tools } from './mcp.tools.js';
-import { AEMConnector } from '../aem/aem.connector.js';
 import { MCPRequestHandler } from './mcp.aem-handler.js';
 import { CliParams } from '../types.js';
 
 export const createMCPServer = (cliParams: CliParams) => {
-  const aemConnector = new AEMConnector(cliParams);
-  const mcpHandler = new MCPRequestHandler(cliParams, aemConnector);
+  const mcpHandler = new MCPRequestHandler(cliParams);
 
-  const server = new Server({
+  const serverInfo = {
     name: 'aem-mcp-server',
     version: '1.0.0',
-  }, {
+  };
+  const serverData = {
     capabilities: {
       resources: {},
       tools: {}
     },
-  });
+  };
+
+  const server = new Server(serverInfo, serverData);
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     console.log('2. Received ListToolsRequest', tools);

@@ -3,7 +3,6 @@ import cors from 'cors';
 import { handleRequest } from '../mcp/mcp.server-handler.js';
 // import { useBasicAuth } from './app.auth.js';
 import { AEMConnector } from '../aem/aem.connector.js';
-import { MCPRequestHandler } from '../mcp/mcp.aem-handler.js';
 import { config } from '../config.js';
 import { CliParams } from '../types.js';
 
@@ -20,11 +19,18 @@ const createServer = (params: CliParams = {}) => {
 
   // useBasicAuth(app);
   const aemConnector = new AEMConnector(params);
-  const mcpHandler = new MCPRequestHandler(params, aemConnector);
 
   app.get('/health', async (req: Request, res: Response) => {
     try {
-      const result = await mcpHandler.handleHealthCheck();
+      await aemConnector.init();
+      const aemConnected = await aemConnector.testConnection();
+      const result = {
+        status: 'healthy',
+        aem: aemConnected ? 'connected' : 'disconnected',
+        mcp: 'ready',
+        timestamp: new Date().toISOString(),
+        version: config.APP_VERSION || '1.0.0',
+      };
       res.json(result);
     } catch (error: any) {
       res.status(500).json({ status: 'unhealthy', error: error.message, timestamp: new Date().toISOString() });
