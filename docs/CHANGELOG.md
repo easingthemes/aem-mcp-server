@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.2.0...v1.3.0) (2025-08-10)
+
+
+### Features
+
+* add logger, change port ([f4ee48b](https://github.com/easingthemes/aem-mcp-server/commit/f4ee48b32fde2034b53f29fb2efa3aef9ba20f39))
+
 # [1.2.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.1.5...v1.2.0) (2025-08-10)
 
 
