@@ -1,17 +1,15 @@
 import { AEMConfig, getAEMConfig, isValidContentPath, isValidLocale } from './aem.config.js';
 import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpError, safeExecute, validateComponentOperation } from './aem.errors.js';
 import { CliParams } from '../types.js';
-import { AEMFetch } from './aem.fetch.js';
+import { AEMAuth, AEMFetch } from './aem.fetch.js';
+import { LOGGER } from '../utils/logger.js';
 
 export interface AEMConnectorConfig {
   aem: {
     host: string;
     author: string;
     publish: string;
-    serviceUser: {
-      username: string;
-      password: string;
-    };
+    auth: AEMAuth;
     endpoints: Record<string, string>;
   };
   mcp: {
@@ -22,6 +20,7 @@ export interface AEMConnectorConfig {
 
 export class AEMConnector {
   isInitialized: boolean;
+  isAEMaaCS: boolean;
   config: AEMConnectorConfig;
   aemConfig: AEMConfig;
   private readonly fetch: AEMFetch;
@@ -30,10 +29,10 @@ export class AEMConnector {
     this.isInitialized = false;
     this.config = this.loadConfig(params);
     this.aemConfig = getAEMConfig({});
+    this.isAEMaaCS = this.isConfigAEMaaCS();
     this.fetch = new AEMFetch({
       host: this.config.aem.host,
-      username: this.config.aem.serviceUser.username,
-      password: this.config.aem.serviceUser.password,
+      auth: this.config.aem.auth,
       timeout: this.aemConfig.queries.timeoutMs,
     });
   }
@@ -47,13 +46,17 @@ export class AEMConnector {
     }
   }
 
+  isConfigAEMaaCS(): boolean {
+    return Boolean(this.config.aem.auth.clientId && this.config.aem.auth.clientSecret);
+  }
+
   loadConfig(params: CliParams = {}): AEMConnectorConfig {
     return {
       aem: {
         host: params.host || 'http://localhost:4502',
         author: params.host || 'http://localhost:4502',
         publish: 'http://localhost:4503',
-        serviceUser: {
+        auth: {
           username: params.user || 'admin',
           password: params.pass || 'admin',
         },
@@ -66,24 +69,46 @@ export class AEMConnector {
         },
       },
       mcp: {
-        name: 'AEM MCP Server',
+        name: 'NAEM MCP Server',
         version: '1.0.0',
       },
     };
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ aem: boolean; auth: boolean }> {
+    const aem = await this.testAEMConnection();
+    const auth = aem ? await this.testAuthConnection() : false;
+    return { aem, auth };
+  }
+
+  async testAEMConnection(): Promise<boolean> {
     try {
-      // eslint-disable-next-line no-console
-      console.log('Testing AEM connection to:', this.config.aem.host);
+      if (!this.isInitialized) {
+        await this.init();
+      }
+      LOGGER.log('Testing AEM connection to:', this.config.aem.host);
       const url = `${this.config.aem.host}/libs/granite/core/content/login.html`;
       const response = await this.fetch.get(url, { timeout: 5000 });
-      // eslint-disable-next-line no-console
-      console.log('✅ AEM connection successful! Status:', response.status);
+      LOGGER.log('✅ AEM connection successful! Status:', response.status);
       return true;
     } catch (error: any) {
-      // eslint-disable-next-line no-console
-      console.error('❌ AEM connection failed:', error.message);
+      LOGGER.error('❌ AEM connection failed:', error.message);
+      return false;
+    }
+  }
+
+  async testAuthConnection(): Promise<boolean> {
+    try {
+      if (!this.isInitialized) {
+        await this.init();
+      }
+      const url = `${this.config.aem.host}/libs/granite/security/content/userinfo.json`;;
+      LOGGER.log('Testing AEM authentication connection to:', this.config.aem.host);
+      const response = await this.fetch.get(url, { timeout: 5000 });
+      LOGGER.log('✅ AEM authentication connection successful! Status:', response.status);
+      return true;
+    } catch (error: any) {
+      LOGGER.error('❌ AEM authentication connection failed:', error.message);
       return false;
     }
   }
@@ -525,7 +550,7 @@ export class AEMConnector {
           totalChildrenScanned: pages.length
         }, 'listPages');
       } catch (error: any) {
-        console.warn('JSON API failed, falling back to QueryBuilder:', error.message);
+        LOGGER.warn('JSON API failed, falling back to QueryBuilder:', error.message);
         // Fallback to QueryBuilder if JSON API fails
         if (error.response?.status === 404 || error.response?.status === 403) {
           const data = await this.fetch.get('/bin/querybuilder.json', {

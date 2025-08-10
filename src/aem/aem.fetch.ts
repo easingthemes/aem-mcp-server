@@ -1,12 +1,26 @@
 import { getAccessToken } from './aem.auth.js';
+import { LOGGER } from '../utils/logger.js';
+
+export type AEMBasicAuth = {
+  username: string;
+  password: string;
+  clientId?: undefined;
+  clientSecret?: undefined;
+};
+
+export type AEMOAuth = {
+  username?: undefined;
+  password?: undefined;
+  clientId: string;
+  clientSecret: string;
+  scope?: string | string[];
+};
+
+export type AEMAuth = AEMBasicAuth | AEMOAuth;
 
 export type AEMFetchConfig = {
   host: string;
-  username?: string;
-  password?: string;
-  clientId?: string;
-  clientSecret?: string;
-  scope?: string | string[];
+  auth: AEMAuth;
   timeout?: number;
 }
 
@@ -15,10 +29,14 @@ type FetchInstance = (input: RequestInfo, init?: RequestInit) => Promise<Respons
 export class AEMFetch {
   private fetch: FetchInstance | null;
   private readonly config: AEMFetchConfig;
+  private token: string;
+  private tokenExpiry: number;
 
   constructor(config: AEMFetchConfig) {
     this.config = config;
     this.fetch = null;
+    this.token = '';
+    this.tokenExpiry = 0;
   }
 
   /**
@@ -26,18 +44,17 @@ export class AEMFetch {
    * Must be called before making requests.
    */
   async init() {
-    const token = await this.getAuthToken(this.config);
-    this.fetch = this.getFetchInstance(token);
+    this.token = await this.getAuthToken(this.config.auth);
+    this.fetch = this.getFetchInstance();
   }
 
   /**
    * Returns a fetch instance with proper headers for AEM authentication.
-   * @param token Authentication token
    */
-  private getFetchInstance(token: string): FetchInstance {
+  private getFetchInstance(): FetchInstance {
     return (input: RequestInfo, init: RequestInit = {}): Promise<Response> => {
       const headers = new Headers(init.headers || {});
-      headers.set('Authorization', `Basic ${token}`);
+      headers.set('Authorization', `Basic ${this.token}`);
       headers.set('Accept', 'application/json');
       if (!headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
@@ -46,9 +63,16 @@ export class AEMFetch {
     }
   }
 
-  async getAuthToken(config: AEMFetchConfig): Promise<string> {
+  async getAuthToken(config: AEMAuth): Promise<string> {
     if (config.clientId && config.clientSecret) {
-      return getAccessToken(config.clientId, config.clientSecret, config.scope);
+      const now = Date.now();
+      if (this.token && now < this.tokenExpiry) {
+        return this.token;
+      }
+      const token = await getAccessToken(config.clientId, config.clientSecret, config.scope);
+      this.token = token.access_token;
+      this.tokenExpiry = now + (token.expires_in - 60) * 1000;
+      return this.token;
     }
     if (config.username && config.password) {
       return Buffer.from(`${config.username}:${config.password}`).toString('base64');
@@ -56,6 +80,11 @@ export class AEMFetch {
     throw new Error('No authentication credentials provided');
   }
 
+  async refreshAuthToken() {
+    this.token = ''; // Reset token to force refresh
+    this.tokenExpiry = 0; // Reset expiry
+    this.token = await this.getAuthToken(this.config.auth);
+  }
   /**
    * Returns timeout options for fetch requests, including AbortController and timeoutId.
    * @param requestTimeout Optional timeout in ms (overrides config.timeout)
@@ -114,9 +143,8 @@ export class AEMFetch {
     try {
       response = await this.fetch(url, options);
       if (response.status === 401) {
-        console.warn(`AEM request to ${url} returned 401 Unauthorized. Attempting to refresh token...`);
-        const token = await this.getAuthToken(this.config);
-        this.fetch = this.getFetchInstance(token);
+        LOGGER.warn(`AEM request to ${url} returned 401 Unauthorized. Attempting to refresh token...`);
+        await this.refreshAuthToken();
         response = await this.fetch(url, options);
       }
       if (!response.ok) throw new Error(`AEM ${options.method || 'GET'} failed: ${response.status}`);

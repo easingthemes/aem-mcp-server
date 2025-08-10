@@ -1,3 +1,5 @@
+import { LOGGER } from '../utils/logger.js';
+
 export interface AEMErrorDetails {
   [key: string]: any;
 }
@@ -98,8 +100,8 @@ export async function safeExecute<T>(operation: () => Promise<T>, operationName:
         break;
       }
       const delay = lastError.retryAfter || Math.pow(2, attempt) * 1000;
-      // eslint-disable-next-line no-console
-      console.warn(`[${operationName}] Attempt ${attempt} failed, retrying in ${delay}ms:`, lastError.message);
+      // eslint-disable-next-line no-LOGGER
+      LOGGER.warn(`[${operationName}] Attempt ${attempt} failed, retrying in ${delay}ms:`, lastError.message);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -149,4 +151,4 @@ export function createErrorResponse(error: AEMOperationError, operation: string)
       retryAfter: error.retryAfter
     }
   };
-} 
+}
