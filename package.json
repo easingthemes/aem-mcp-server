@@ -37,8 +37,7 @@
     "test:npm": "npm pack && npm install -g ./aem-mcp-server-$npm_package_version.tgz && aem-mcp -e -H=http://localhost:5502"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.16.0",
-    "axios": "^1.10.0",
+    "@modelcontextprotocol/sdk": "^1.17.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "yargs": "^18.0.0"
@@ -46,10 +45,10 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
-    "@types/node": "^24.0.14",
+    "@types/node": "^24.3.0",
     "@types/yargs": "^17.0.33",
-    "esbuild": "^0.25.6",
-    "typescript": "^5.8.3"
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2"
   },
   "type": "module"
 }
