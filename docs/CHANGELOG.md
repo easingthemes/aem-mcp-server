@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.0...v1.3.1) (2025-08-19)
+
+
+### Bug Fixes
+
+* add AEMaaCS auth params ([3b2cbbf](https://github.com/easingthemes/aem-mcp-server/commit/3b2cbbf9e5b6b6c827b497a3f184e8cd55bed452))
+
 # [1.3.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.2.0...v1.3.0) (2025-08-10)
 
 
