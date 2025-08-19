@@ -29,7 +29,7 @@ This project is designed for non-technical persons who want to manage AEM via na
 - Access to an AEM instance (local or remote)
 
 ### Add AEM MCP to AI IDE
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=JTdCJTIydXJsJTIyJTNBJTIyaHR0cCUzQSUyRiUyRjEyNy4wLjAuMSUzQTg1MDIlMkZtY3AlMjIlN0Q%3D)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=eyJ1cmwiOiJodHRwOi8vMTI3LjAuMC4xOjg1MDIvbWNwIn0%3D)
 
 OR:
 
@@ -51,7 +51,7 @@ Options:
   -P, --publisher  Publisher instance URL [string] [default: "http://localhost:4503"]
   -u, --user       Username for authentication            [string] [default: "admin"]
   -p, --pass       Password for authentication            [string] [default: "admin"]
-  -m, --mcpPort    Port for MCP server                       [number] [default: 3000]
+  -m, --mcpPort    Port for MCP server                       [number] [default: 8502]
   -h, --help       Show help                                                [boolean]
 
 ```
@@ -82,7 +82,7 @@ AEM MCP Server is compatible with modern AI IDEs and code editors that support M
    - Open your IDE's MCP server settings.
    - Add a new server with:
      - **Type:** Custom MCP
-     - **url:** `http://127.0.0.1:3000/mcp`
+     - **url:** `http://127.0.0.1:8502/mcp`
 
 3. **Restart your IDE** if needed. The IDE will now be able to:
    - List, search, and manage AEM content
@@ -94,7 +94,7 @@ Sample for AI-based code editors or custom clients:
 {
   "mcpServers": {
     "AEM": {
-      "url": "http://127.0.0.1:3000/mcp"
+      "url": "http://127.0.0.1:8502/mcp"
     }
   }
 }
