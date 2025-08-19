@@ -51,15 +51,24 @@ export class AEMConnector {
   }
 
   loadConfig(params: CliParams = {}): AEMConnectorConfig {
+    let auth;
+    if (params.id && params.secret) {
+      auth = {
+        clientId: params.id,
+        clientSecret: params.secret,
+      }
+    } else {
+      auth = {
+        username: params.user || 'admin',
+        password: params.pass || 'admin',
+      }
+    }
     return {
       aem: {
         host: params.host || 'http://localhost:4502',
         author: params.host || 'http://localhost:4502',
         publish: 'http://localhost:4503',
-        auth: {
-          username: params.user || 'admin',
-          password: params.pass || 'admin',
-        },
+        auth,
         endpoints: {
           content: '/content',
           dam: '/content/dam',
