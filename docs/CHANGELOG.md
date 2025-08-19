@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.1...v1.3.2) (2025-08-19)
+
+
+### Bug Fixes
+
+* exclude docs from npm to reduce size ([fdd81b2](https://github.com/easingthemes/aem-mcp-server/commit/fdd81b2025204e5fd043f7276ec36408d7476584))
+
 ## [1.3.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.0...v1.3.1) (2025-08-19)
 
 
