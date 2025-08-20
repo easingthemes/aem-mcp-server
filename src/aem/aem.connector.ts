@@ -95,10 +95,10 @@ export class AEMConnector {
       if (!this.isInitialized) {
         await this.init();
       }
-      LOGGER.log('Testing AEM connection to:', this.config.aem.host);
-      const url = `${this.config.aem.host}/libs/granite/core/content/login.html`;
-      const response = await this.fetch.get(url, { timeout: 5000 });
-      LOGGER.log('✅ AEM connection successful! Status:', response.status);
+      const url = `/libs/granite/core/content/login.html`;
+      LOGGER.log('Testing AEM connection to:', url);
+      const response = await this.fetch.get(url, undefined, undefined, 5000, true);
+      LOGGER.log('✅ AEM connection successful!');
       return true;
     } catch (error: any) {
       LOGGER.error('❌ AEM connection failed:', error.message);
@@ -111,10 +111,10 @@ export class AEMConnector {
       if (!this.isInitialized) {
         await this.init();
       }
-      const url = `${this.config.aem.host}/libs/granite/security/currentuser.json`;
-      LOGGER.log('Testing AEM authentication connection to:', this.config.aem.host);
-      const response = await this.fetch.get(url, { timeout: 5000 });
-      LOGGER.log('✅ AEM authentication connection successful! Status:', response.status);
+      const url = `/libs/granite/security/currentuser.json`;
+      LOGGER.log('Testing AEM authentication connection to:', url);
+      const response = await this.fetch.get(url, undefined, undefined,5000);
+      LOGGER.log('✅ AEM authentication connection successful!');
       return true;
     } catch (error: any) {
       LOGGER.error('❌ AEM authentication connection failed:', error.message);
