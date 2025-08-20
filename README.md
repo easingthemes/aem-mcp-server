@@ -57,7 +57,7 @@ For self-hosted AEM use user/pass. The default credentials are `admin:admin`.
 
 ### Example Command
 ```sh
-aem-mcp -u=user@domain.com -p=mypass -H=https://author-qa.adobeaemcloud.com
+aem-mcp -u=user@domain.com -p=mypass -H=https://author-qa.domain.com
 ```
 
 ### Add AEM MCP to AI IDE
