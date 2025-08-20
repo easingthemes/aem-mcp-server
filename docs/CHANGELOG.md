@@ -1,3 +1,10 @@
+## [1.3.6](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.5...v1.3.6) (2025-08-20)
+
+
+### Bug Fixes
+
+* fix health check ([66dd8dc](https://github.com/easingthemes/aem-mcp-server/commit/66dd8dc3b7ed7acf47877109c41fb09fc1ac8534))
+
 ## [1.3.5](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.4...v1.3.5) (2025-08-20)
 
 
