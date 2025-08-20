@@ -1,3 +1,10 @@
+## [1.3.4](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.3...v1.3.4) (2025-08-20)
+
+
+### Bug Fixes
+
+* add cli params description ([10e4314](https://github.com/easingthemes/aem-mcp-server/commit/10e431498b6d3197a47fb6e1764e2f8c38ac429f))
+
 ## [1.3.3](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.2...v1.3.3) (2025-08-19)
 
 
