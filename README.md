@@ -16,7 +16,7 @@ This project is designed for non-technical persons who want to manage AEM via na
 
 - **Chat with your AEM instance** for content, component, and asset operations.
 - **AI IDEs integration** (Cursor, Copilot, Webstorm, VS Code, etc.)
-- **Production-ready, modular, and configurable**
+- **Supports both AEMaaCS and self-hosted instances**
 - **Modern, TypeScript-based AEM MCP server**
 - **REST/JSON-RPC API** with latest MCP features.
 
@@ -28,17 +28,13 @@ This project is designed for non-technical persons who want to manage AEM via na
 - Node.js 18+
 - Access to an AEM instance (local or remote)
 
-### Add AEM MCP to AI IDE
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=eyJ1cmwiOiJodHRwOi8vMTI3LjAuMC4xOjg1MDIvbWNwIn0%3D)
-
-OR:
-
 ### Installation
 ```sh
 npm install aem-mcp-server -g
 ```
 
 ### Start the Server
+With default settings (admin:admin credentials for http://localhost:4502):
 ```sh
 aem-mcp
 ```
@@ -46,15 +42,26 @@ aem-mcp
 ### Configuration
 ```
 Options:
-      --version    Show version number                                      [boolean]
-  -H, --host       Author instance URL [string]    [default: "http://localhost:4502"]
-  -P, --publisher  Publisher instance URL [string] [default: "http://localhost:4503"]
-  -u, --user       Username for authentication            [string] [default: "admin"]
-  -p, --pass       Password for authentication            [string] [default: "admin"]
-  -m, --mcpPort    Port for MCP server                       [number] [default: 8502]
-  -h, --help       Show help                                                [boolean]
-
+      --version  Show version number                                   [boolean]
+  -H, --host                         [string] [default: "http://localhost:4502"]
+  -u, --user                                         [string] [default: "admin"]
+  -p, --pass                                         [string] [default: "admin"]
+  -i, --id       clientId                                 [string] [default: ""]
+  -s, --secret   clientSecret                             [string] [default: ""]
+  -m, --mcpPort                                         [number] [default: 8502]
+  -h, --help     Show help                                             [boolean]
 ```
+
+For AEMaaCS, use the `clientId` and `clientSecret` for authentication. [More info](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation).
+For self-hosted AEM use user/pass. The default credentials are `admin:admin`.
+
+### Example Command
+```sh
+aem-mcp -u=user@domain.com -p=mypass -H=https://author-qa.adobeaemcloud.com
+```
+
+### Add AEM MCP to AI IDE
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=eyJ1cmwiOiJodHRwOi8vMTI3LjAuMC4xOjg1MDIvbWNwIn0%3D)
 
 ---
 
