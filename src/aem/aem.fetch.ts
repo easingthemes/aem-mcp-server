@@ -129,9 +129,10 @@ export class AEMFetch {
    * @param url Absolute URL string
    * @param options Fetch options
    * @param timeout Optional timeout in ms
+   * @param isHtml Optional flag to indicate if response is HTML
    * @returns Parsed JSON response
    */
-  private async request(url: string, options: RequestInit = {}, timeout?: number): Promise<any> {
+  private async request(url: string, options: RequestInit = {}, timeout?: number, isHtml?: boolean): Promise<any> {
     if (!this.fetch) {
       throw new Error('AEMFetch not initialized. Call await init(config) before making requests.');
     }
@@ -148,6 +149,9 @@ export class AEMFetch {
         response = await this.fetch(url, options);
       }
       if (!response.ok) throw new Error(`AEM ${options.method || 'GET'} failed: ${response.status}`);
+      if (isHtml) {
+        return response.text();
+      }
       return response.json();
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
@@ -160,11 +164,12 @@ export class AEMFetch {
    * @param params Optional query parameters
    * @param options Fetch options
    * @param timeout Optional timeout in ms
+   * @param isHtml Optional flag to indicate if response is HTML
    * @returns Parsed JSON response
    */
-  async get(url: string, params?: Record<string, any>, options: RequestInit = {}, timeout?: number): Promise<any> {
+  async get(url: string, params?: Record<string, any>, options: RequestInit = {}, timeout?: number, isHtml?: boolean): Promise<any> {
     const fullUrl = this.buildUrlWithParams(url, params);
-    return this.request(fullUrl, options, timeout);
+    return this.request(fullUrl, options, timeout, isHtml);
   }
 
   /**
