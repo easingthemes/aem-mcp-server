@@ -111,7 +111,7 @@ export class AEMConnector {
       if (!this.isInitialized) {
         await this.init();
       }
-      const url = `${this.config.aem.host}/libs/granite/security/content/userinfo.json`;;
+      const url = `${this.config.aem.host}/libs/granite/security/currentuser.json`;
       LOGGER.log('Testing AEM authentication connection to:', this.config.aem.host);
       const response = await this.fetch.get(url, { timeout: 5000 });
       LOGGER.log('✅ AEM authentication connection successful! Status:', response.status);
