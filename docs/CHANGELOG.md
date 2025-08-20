@@ -1,3 +1,10 @@
+## [1.3.5](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.4...v1.3.5) (2025-08-20)
+
+
+### Bug Fixes
+
+* update test user path ([b53ffbb](https://github.com/easingthemes/aem-mcp-server/commit/b53ffbb97c1bcffb8db0835ceb2fcf4d76f6ca87))
+
 ## [1.3.4](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.3...v1.3.4) (2025-08-20)
 
 
