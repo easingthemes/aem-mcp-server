@@ -707,7 +707,7 @@ export class AEMConnector {
             }
           }
         } else {
-          console.error('DELETE failed:', err.response?.status, err.response?.data);
+          LOGGER.error('DELETE failed:', err.response?.status, err.response?.data);
           throw err;
         }
       }
@@ -765,7 +765,7 @@ export class AEMConnector {
             throw slingErr;
           }
         } else {
-          console.error('DELETE failed:', err.response?.status, err.response?.data);
+          LOGGER.error('DELETE failed:', err.response?.status, err.response?.data);
           throw err;
         }
       }
@@ -1034,16 +1034,41 @@ export class AEMConnector {
     }, 'deleteAsset');
   }
 
+  getTemplatesPath(inputPath?: string): string {
+    if (!inputPath || inputPath.trim().length === 0) {
+      return '';
+    }
+    // Normalize the path to ensure it starts with /conf and ends with /settings/wcm/templates
+    let validPath = inputPath.trim();
+    let prefix = '/conf';
+    let suffix = '/settings/wcm/templates';
+    // Remove trailing slashes
+    validPath = validPath.replace(/\/+$/, '');
+    if (validPath.startsWith('/content/')) {
+      validPath = validPath.replace('/content', '');
+    }
+    // If starts with /conf, just ensure it ends with the suffix
+    if (!validPath.startsWith(prefix)) {
+      validPath = `${prefix}/${validPath.replace(/^\//, '')}`; // Ensure single slash
+    }
+    if (!validPath.endsWith(suffix)) {
+      validPath += suffix;
+    }
+    return validPath;
+  }
+
   async getTemplates(sitePath?: string): Promise<object> {
     return safeExecute<object>(async () => {
       // If sitePath is provided, look for templates specific to that site
       if (sitePath) {
         try {
           // Try to get site-specific templates from /conf
-          const confPath = `/conf${sitePath.replace('/content', '')}/settings/wcm/templates`;
-          const data = await this.fetch.get(`${confPath}.json`, {
-             ':depth': '2'
-          });
+          const confPath = this.getTemplatesPath(sitePath);
+          if (!confPath) {
+            throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Cannot determine configuration path for site: ${sitePath}`, { sitePath });
+          }
+          LOGGER.log('Looking for site-specific templates at:', confPath);
+          const data = await this.fetch.get(`${confPath}.2.json`);
 
           const templates: any[] = [];
           if (data && typeof data === 'object') {
@@ -1253,6 +1278,7 @@ export class AEMConnector {
    */
   async getAvailableTemplates(parentPath: string): Promise<object> {
     return safeExecute<object>(async () => {
+      console.log('getAvailableTemplates for parentPath:', parentPath);
       // Try to determine site configuration from parent path
       let confPath = '/conf';
       const pathParts = parentPath.split('/');
@@ -1265,9 +1291,7 @@ export class AEMConnector {
       const templatesPath = `${confPath}/settings/wcm/templates`;
 
       try {
-        const data = await this.fetch.get(`${templatesPath}.json`, {
-          ':depth': '3'
-        });
+        const data = await this.fetch.get(`${templatesPath}.3.json`);
 
         const templates: any[] = [];
 
@@ -1278,6 +1302,7 @@ export class AEMConnector {
             if (value && typeof value === 'object' && value['jcr:content']) {
               const templatePath = `${templatesPath}/${key}`;
               const content = value['jcr:content'];
+              const structure = value?.['structure']?.['jcr:content'] || {};
 
               templates.push({
                 name: key,
@@ -1289,6 +1314,7 @@ export class AEMConnector {
                 status: content['status'] || 'enabled',
                 ranking: content['ranking'] || 0,
                 templateType: content['templateType'] || 'page',
+                resourceType: structure['sling:resourceType'] || '',
                 lastModified: content['cq:lastModified'],
                 createdBy: content['jcr:createdBy']
               });
@@ -1359,34 +1385,42 @@ export class AEMConnector {
    */
   async createPageWithTemplate(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { parentPath, title, template, name, properties = {} } = request;
+      const { parentPath, title, template, name, properties = {}, resourceType = '' } = request;
 
       if (!isValidContentPath(parentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid parent path: ${String(parentPath)}`, { parentPath });
       }
 
       // If no template provided, get available templates and prompt user
-      let selectedTemplate = template;
-      if (!selectedTemplate) {
+      let selectedTemplatePath = template;
+      let templateResourceType = resourceType;
+      if (!selectedTemplatePath || !templateResourceType) {
         const templatesResponse = await this.getAvailableTemplates(parentPath);
         const availableTemplates = (templatesResponse as any).data.availableTemplates;
 
         if (availableTemplates.length === 0) {
           throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'No templates available for this path', { parentPath });
         }
-        // TODO: what?
-        // For now, select the first available template
-        // In a real implementation, this would prompt the user
-        selectedTemplate = availableTemplates[0].path;
-        console.log(`🎯 Auto-selected template: ${selectedTemplate} (${availableTemplates[0].title})`);
+
+        // Auto-select the first available template
+        const selectedTemplate = availableTemplates[0];
+        if (selectedTemplatePath) {
+          selectedTemplatePath = selectedTemplate.path;
+        }
+        if (!templateResourceType && selectedTemplate.resourceType) {
+          templateResourceType = selectedTemplate.resourceType;
+        }
+        LOGGER.log(`🎯 Auto-selected template: ${selectedTemplatePath} (${availableTemplates[0].title})`, templateResourceType);
       }
 
       // Validate template exists
       try {
-        await this.fetch.get(`${selectedTemplate}.json`);
+        const verifyTemplate = await this.fetch.get(`${selectedTemplatePath}.json`);
+        LOGGER.log(`✅ Template verified: ${selectedTemplatePath}`, verifyTemplate);
       } catch (error: any) {
+        LOGGER.error('Template verification failed:', error.message, error);
         if (error?.response?.status === 404) {
-          throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Template not found: ${selectedTemplate}`, { template: selectedTemplate });
+          throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Template not found: ${selectedTemplatePath}`, { template: selectedTemplatePath });
         }
         throw handleAEMHttpError(error, 'createPageWithTemplate');
       }
@@ -1400,8 +1434,8 @@ export class AEMConnector {
         'jcr:content': {
           'jcr:primaryType': 'cq:PageContent',
           'jcr:title': title,
-          'cq:template': selectedTemplate,
-          'sling:resourceType': 'foundation/components/page',
+          'cq:template': selectedTemplatePath,
+          'sling:resourceType': templateResourceType || 'foundation/components/page',
           // Remove protected properties that are managed by the repository
           // 'jcr:createdBy': 'mcp-server',
           // 'jcr:created': new Date().toISOString(),
@@ -1459,7 +1493,7 @@ export class AEMConnector {
         success: true,
         pagePath: newPagePath,
         title,
-        templateUsed: selectedTemplate,
+        templateUsed: selectedTemplatePath,
         jcrContentCreated: hasJcrContent,
         pageAccessible,
         errorLogCheck,
