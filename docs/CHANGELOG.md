@@ -1,3 +1,10 @@
+## [1.3.8](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.7...v1.3.8) (2025-09-02)
+
+
+### Bug Fixes
+
+* update page creation and templates info ([4b6863a](https://github.com/easingthemes/aem-mcp-server/commit/4b6863adf4233620665748c825f9236aa93ea7ee))
+
 ## [1.3.7](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.6...v1.3.7) (2025-09-01)
 
 
