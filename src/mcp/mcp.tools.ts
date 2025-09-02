@@ -250,10 +250,11 @@ export const tools: ToolDefinition[] = [
         parentPath: { type: 'string' },
         title: { type: 'string' },
         template: { type: 'string' },
+        resourceType: { type: 'string' },
         name: { type: 'string' },
         properties: { type: 'object' },
       },
-      required: ['parentPath', 'title', 'template'],
+      required: ['parentPath', 'title', 'template', 'resourceType'],
     },
   },
   {

@@ -142,6 +142,7 @@ export class AEMFetch {
     }
     let response: Response;
     try {
+      LOGGER.log('AEM Request:', url, options);
       response = await this.fetch(url, options);
       if (response.status === 401) {
         LOGGER.warn(`AEM request to ${url} returned 401 Unauthorized. Attempting to refresh token...`);

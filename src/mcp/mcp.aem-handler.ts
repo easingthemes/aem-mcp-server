@@ -100,7 +100,7 @@ export class MCPRequestHandler {
         case 'deleteAsset':
           return await this.aemConnector.deleteAsset(params);
         case 'getTemplates':
-          // return await this.aemConnector.getTemplates(params.sitePath);
+          return await this.aemConnector.getTemplates(params.sitePath);
         case 'getTemplateStructure':
           return await this.aemConnector.getTemplateStructure(params.templatePath);
         case 'bulkUpdateComponents':
