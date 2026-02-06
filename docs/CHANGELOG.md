@@ -1,3 +1,10 @@
+## [1.3.9](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.8...v1.3.9) (2026-02-06)
+
+
+### Bug Fixes
+
+* add mcp registry ([32ae45f](https://github.com/easingthemes/aem-mcp-server/commit/32ae45f0e08b03572bb00854a029344c32673505))
+
 ## [1.3.8](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.7...v1.3.8) (2025-09-02)
 
 
