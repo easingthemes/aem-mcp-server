@@ -7,6 +7,34 @@ type ToolDefinition = {
   callback?: (args: {}, extra: any) => (CallToolResult | Promise<CallToolResult>);
 };
 
+/**
+ * Inject an optional "instance" parameter into every tool's inputSchema.
+ * Called only when multiple AEM instances are configured.
+ */
+export function injectInstanceParam(
+  toolDefs: ToolDefinition[],
+  instanceNames: string[],
+  defaultName: string,
+): ToolDefinition[] {
+  return toolDefs.map((tool) => {
+    const schema = tool.inputSchema as Record<string, any>;
+    return {
+      ...tool,
+      inputSchema: {
+        ...schema,
+        properties: {
+          ...(schema.properties || {}),
+          instance: {
+            type: 'string',
+            description: `Target AEM instance. Available: ${instanceNames.join(', ')}. Default: "${defaultName}"`,
+            enum: instanceNames,
+          },
+        },
+      },
+    };
+  });
+}
+
 export const tools: ToolDefinition[] = [
   {
     name: 'updateComponent',
