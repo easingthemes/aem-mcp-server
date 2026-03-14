@@ -4,6 +4,8 @@ const SCOPES = "openid,AdobeID,read_organizations,additional_info.projectedProdu
 type AccessTokenResponse = {
   access_token: string;
   expires_in: number;
+  refresh_token?: string;
+  token_type?: string;
 }
 
 const getScopes = (scopes?: string | string[]): string => {
@@ -16,6 +18,9 @@ const getScopes = (scopes?: string | string[]): string => {
   return scopes;
 }
 
+/**
+ * Get access token using client credentials (server-to-server OAuth)
+ */
 export async function getAccessToken(clientId: string, clientSecret: string, scopes?: string | string[]): Promise<AccessTokenResponse> {
   if (!clientId || !clientSecret) {
     throw new Error("Client ID and Client Secret must be provided");

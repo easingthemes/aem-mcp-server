@@ -11,6 +11,9 @@ export interface AEMConfig {
   };
   components: {
     defaultProperties: Record<string, any>;
+    componentPaths?: {
+      projectRoot1?: string;
+    };
   };
   queries: {
     maxLimit: number;
@@ -50,6 +53,9 @@ export function getAEMConfig(config: AEMBaseConfig): AEMConfig {
         'jcr:primaryType': 'nt:unstructured',
         'sling:resourceType': 'foundation/components/text'
       },
+      componentPaths: {
+        projectRoot1: '/apps/aemmcp/base/components'
+      }
     },
     queries: {
       maxLimit: parseInt(config.AEM_QUERY_MAX_LIMIT || '100'),
