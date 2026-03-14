@@ -1,9 +1,8 @@
-# @netcentric/aem-mcp-server
-AEM MCP Server
+# AEM MCP Server (aem-mcp-server)
 
-[![Version](https://img.shields.io/npm/v/@netcentric/aem-mcp-server.svg)](https://npmjs.org/package/@netcentric/aem-mcp-server)
-[![Build Status](https://github.com/netcentric/aem-mcp-server/workflows/CI/badge.svg?branch=main)](https://github.com/netcentric/aem-mcp-server/actions)
-[![CodeQL Analysis](https://github.com/netcentric/aem-mcp-server/workflows/CodeQL/badge.svg?branch=main)](https://github.com/netcentric/aem-mcp-server/actions)
+[![Version](https://img.shields.io/npm/v/aem-mcp-server.svg)](https://npmjs.org/package/aem-mcp-server)
+[![Release Status](https://github.com/easingthemes/aem-mcp-server/actions/workflows/release.yml/badge.svg)](https://github.com/easingthemes/aem-mcp-server/actions/workflows/release.yml)
+[![CodeQL Analysis](https://github.com/easingthemes/aem-mcp-server/workflows/CodeQL/badge.svg?branch=main)](https://github.com/easingthemes/aem-mcp-server/actions)
 [![semver: semantic-release](https://img.shields.io/badge/semver-semantic--release-blue.svg)](https://github.com/semantic-release/semantic-release)
 [![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -34,7 +33,7 @@ This project is designed for non-technical persons who want to manage AEM via na
 ### Installation
 
 ```sh
-npm install @netcentric/aem-mcp-server -g
+npm install aem-mcp-server -g
 ```
 
 ### Start the Server
