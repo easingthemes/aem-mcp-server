@@ -1,14 +1,12 @@
 import { CallToolRequestSchema, ListToolsRequestSchema, InitializeRequestSchema, LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { tools, injectInstanceParam } from './mcp.tools.js';
-import { InstanceRegistry } from './mcp.instances.js';
+import { tools } from './mcp.tools.js';
+import { MCPRequestHandler } from './mcp.aem-handler.js';
 import { CliParams } from '../types.js';
 import { LOGGER } from '../utils/logger.js';
 
 export const createMCPServer = (cliParams: CliParams) => {
-  const registry = new InstanceRegistry(cliParams);
-  const instanceNames = registry.getInstanceNames();
-  const isMultiInstance = instanceNames.length > 1;
+  const mcpHandler = new MCPRequestHandler(cliParams);
 
   const serverInfo = {
     name: 'aem-mcp-server',
@@ -19,10 +17,7 @@ export const createMCPServer = (cliParams: CliParams) => {
       resources: {},
       tools: {}
     },
-    instructions: isMultiInstance
-      ? `AEM MCP server with ${instanceNames.length} instances: ${instanceNames.join(', ')}. ` +
-        `Use the "instance" parameter to target a specific instance (default: "${registry.getDefaultName()}").`
-      : 'This is an AEM MCP server that provides tools for managing AEM components and content.',
+    instructions: 'This is an AEM MCP server that provides tools for managing AEM components and content.',
   };
 
   const server = new Server(serverInfo, serverData);
@@ -41,11 +36,8 @@ export const createMCPServer = (cliParams: CliParams) => {
   });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const exportedTools = isMultiInstance
-      ? injectInstanceParam(tools, instanceNames, registry.getDefaultName())
-      : tools;
-    LOGGER.log('2. Received ListToolsRequest', exportedTools);
-    return { tools: exportedTools };
+    LOGGER.log('2. Received ListToolsRequest', tools);
+    return { tools };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -60,12 +52,51 @@ export const createMCPServer = (cliParams: CliParams) => {
       };
     }
     try {
-      const { instance, ...toolArgs } = args as Record<string, unknown>;
-      const handler = registry.getHandler(instance as string | undefined);
-      const result = await handler.handleRequest(name, toolArgs);
+      const result = await mcpHandler.handleRequest(name, args);
+      
+      // Check if result contains OAuth redirect info
+      if (result && typeof result === 'object' && 'error' in result && result.error?.code === 'OAUTH_REQUIRED') {
+        const authInfo = {
+          error: 'OAuth authentication required',
+          message: result.error.message,
+          authUrl: result.error.authUrl,
+          redirectUri: result.error.redirectUri,
+          instructions: 'Please open the authUrl in your browser to authorize the application. After authorization, you can retry this operation.',
+        };
+        return {
+          content: [
+            { 
+              type: 'text', 
+              text: JSON.stringify(authInfo, null, 2) 
+            }
+          ],
+          isError: true,
+        };
+      }
+      
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (error: any) {
       LOGGER.error('ERROR CallToolRequestSchema', error.message);
+      
+      // Check if it's an OAuth error
+      if (error.code === 'OAUTH_REQUIRED' && error.authUrl) {
+        const authInfo = {
+          error: 'OAuth authentication required',
+          message: error.message,
+          authUrl: error.authUrl,
+          instructions: 'Please open the authUrl in your browser to authorize the application.',
+        };
+        return {
+          content: [
+            { 
+              type: 'text', 
+              text: JSON.stringify(authInfo, null, 2) 
+            }
+          ],
+          isError: true,
+        };
+      }
+      
       return {
         content: [{ type: 'text', text: `Error: ${error.message}` }],
         isError: true,

@@ -76,7 +76,21 @@ export function handleAEMHttpError(error: any, operation: string): AEMOperationE
       case 503:
         return createAEMError(AEM_ERROR_CODES.SYSTEM_ERROR, 'AEM system error. Please try again later.', { status, data }, true, 30000);
       default:
-        return createAEMError(AEM_ERROR_CODES.SYSTEM_ERROR, `HTTP ${status}: ${data?.message || 'Unknown error'}`, { status, data, operation });
+        // Handle both string and object error data
+        let errorMsg = 'Unknown error';
+        if (typeof data === 'string' && data.trim().length > 0) {
+          try {
+            const parsed = JSON.parse(data);
+            errorMsg = parsed.message || JSON.stringify(parsed);
+          } catch {
+            errorMsg = data;
+          }
+        } else if (data && typeof data === 'object' && data.message) {
+          errorMsg = data.message;
+        } else if (data && typeof data === 'object') {
+          errorMsg = JSON.stringify(data);
+        }
+        return createAEMError(AEM_ERROR_CODES.SYSTEM_ERROR, `HTTP ${status}: ${errorMsg}`, { status, data, operation });
     }
   } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
     return createAEMError(AEM_ERROR_CODES.CONNECTION_FAILED, 'Cannot connect to AEM instance. Check host and network.', { originalError: error.message }, true, 5000);
@@ -106,27 +120,6 @@ export async function safeExecute<T>(operation: () => Promise<T>, operationName:
     }
   }
   throw lastError;
-}
-
-export function validateComponentOperation(locale: string, pagePath: string, component: string, props: any): void {
-  const errors: string[] = [];
-  if (!locale || typeof locale !== 'string') {
-    errors.push('Locale is required and must be a string');
-  }
-  if (!pagePath || typeof pagePath !== 'string') {
-    errors.push('Page path is required and must be a string');
-  } else if (!pagePath.startsWith('/content')) {
-    errors.push('Page path must start with /content');
-  }
-  if (!component || typeof component !== 'string') {
-    errors.push('Component type is required and must be a string');
-  }
-  if (!props || typeof props !== 'object') {
-    errors.push('Component properties are required and must be an object');
-  }
-  if (errors.length > 0) {
-    throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'Invalid component operation parameters', { errors });
-  }
 }
 
 export function createSuccessResponse<T>(data: T, operation: string) {
