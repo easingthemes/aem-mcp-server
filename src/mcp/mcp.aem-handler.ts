@@ -1,6 +1,7 @@
 import { AEMConnector } from '../aem/aem.connector.js';
 import { CliParams } from '../types.js';
 import { handleAEMHttpError } from '../aem/aem.errors.js';
+import { toolSchemas, ToolName } from './mcp.tools.js';
 import { LOGGER } from '../utils/logger.js';
 
 export class MCPRequestHandler {
@@ -22,6 +23,16 @@ export class MCPRequestHandler {
   }
 
   async handleRequest(method: string, params: any) {
+    // Validate input against Zod schema (also handles unknown tool names gracefully)
+    const schema = toolSchemas[method as ToolName];
+    if (schema) {
+      const result = schema.safeParse(params);
+      if (!result.success) {
+        throw new Error(`Invalid input for ${method}: ${result.error.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ')}`);
+      }
+      params = result.data;
+    }
+
     try {
       await this.init();
     } catch (error: any) {
@@ -30,12 +41,8 @@ export class MCPRequestHandler {
     }
     try {
       switch (method) {
-        case 'validateComponent':
-          return await this.aemConnector.validateComponent(params);
         case 'updateComponent':
           return await this.aemConnector.updateComponent(params);
-        case 'undoChanges':
-          return await this.aemConnector.undoChanges(params);
         case 'scanPageComponents':
           return await this.aemConnector.scanPageComponents(params.pagePath);
         case 'fetchSites':
@@ -43,9 +50,7 @@ export class MCPRequestHandler {
         case 'fetchLanguageMasters':
           return await this.aemConnector.fetchLanguageMasters(params.site);
         case 'fetchAvailableLocales':
-          return await this.aemConnector.fetchAvailableLocales(params.site, params.languageMasterPath);
-        case 'replicateAndPublish':
-          return await this.aemConnector.replicateAndPublish(params.selectedLocales, params.componentData, params.localizedOverrides);
+          return await this.aemConnector.fetchAvailableLocales(params.site);
         case 'getAllTextContent':
           return await this.aemConnector.getAllTextContent(params.pagePath);
         case 'getPageTextContent':
@@ -70,8 +75,6 @@ export class MCPRequestHandler {
           return await this.aemConnector.executeJCRQuery(params.query, params.limit);
         case 'getAssetMetadata':
           return await this.aemConnector.getAssetMetadata(params.assetPath);
-        case 'getStatus':
-          return this.getWorkflowStatus(params.workflowId);
         case 'enhancedPageSearch':
           return await this.aemConnector.searchContent({
             fulltext: params.searchTerm,
@@ -85,6 +88,8 @@ export class MCPRequestHandler {
           return await this.aemConnector.deletePage(params);
         case 'createComponent':
           return await this.aemConnector.createComponent(params);
+        case 'addComponent':
+          return await this.aemConnector.addComponent(params);
         case 'deleteComponent':
           return await this.aemConnector.deleteComponent(params);
         case 'unpublishContent':
@@ -93,8 +98,6 @@ export class MCPRequestHandler {
           return await this.aemConnector.activatePage(params);
         case 'deactivatePage':
           return await this.aemConnector.deactivatePage(params);
-        case 'uploadAsset':
-          return await this.aemConnector.uploadAsset(params);
         case 'updateAsset':
           return await this.aemConnector.updateAsset(params);
         case 'deleteAsset':
@@ -103,23 +106,38 @@ export class MCPRequestHandler {
           return await this.aemConnector.getTemplates(params.sitePath);
         case 'getTemplateStructure':
           return await this.aemConnector.getTemplateStructure(params.templatePath);
+        case 'getComponents':
+          return await this.aemConnector.getComponents(params.path);
         case 'bulkUpdateComponents':
           return await this.aemConnector.bulkUpdateComponents(params);
+        case 'convertComponents':
+          return await this.aemConnector.convertComponents(params);
+        case 'bulkConvertComponents':
+          return await this.aemConnector.bulkConvertComponents(params);
+        case 'listWorkflowModels':
+          return await this.aemConnector.listWorkflowModels();
+        case 'startWorkflow':
+          return await this.aemConnector.startWorkflow(params.modelId, params.payload, params.payloadType);
+        case 'listWorkflowInstances':
+          return await this.aemConnector.listWorkflowInstances(params.state);
+        case 'getWorkflowInstance':
+          return await this.aemConnector.getWorkflowInstance(params.instanceId);
+        case 'updateWorkflowInstanceState':
+          return await this.aemConnector.updateWorkflowInstanceState(params.instanceId, params.state);
+        case 'getInboxItems':
+          return await this.aemConnector.getInboxItems();
+        case 'completeWorkItem':
+          return await this.aemConnector.completeWorkItem(params.workItemPath, params.routeId, params.comment);
+        case 'delegateWorkItem':
+          return await this.aemConnector.delegateWorkItem(params.workItemPath, params.delegatee);
+        case 'getWorkItemRoutes':
+          return await this.aemConnector.getWorkItemRoutes(params.workItemPath);
         default:
           throw new Error(`Unknown method: ${method}`);
       }
     } catch (error: any) {
-      return { error: error.message, method, params };
+      LOGGER.error(`Error in tool ${method}:`, error.message);
+      throw error;
     }
-  }
-
-  getWorkflowStatus(workflowId: string) {
-    return {
-      success: true,
-      workflowId: workflowId,
-      status: 'completed',
-      message: 'Mock workflow status - always returns completed',
-      timestamp: new Date().toISOString()
-    };
   }
 }

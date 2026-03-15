@@ -2,9 +2,11 @@
 
 [![Version](https://img.shields.io/npm/v/aem-mcp-server.svg)](https://npmjs.org/package/aem-mcp-server)
 [![Release Status](https://github.com/easingthemes/aem-mcp-server/actions/workflows/release.yml/badge.svg)](https://github.com/easingthemes/aem-mcp-server/actions/workflows/release.yml)
-[![CodeQL Analysis](https://github.com/easingthemes/aem-mcp-server/workflows/CodeQL/badge.svg?branch=main)](https://github.com/easingthemes/aem-mcp-server/actions)
+[![CodeQL Analysis](https://github.com/easingthemes/aem-mcp-server/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/easingthemes/aem-mcp-server/actions/workflows/codeql-analysis.yml)
 [![semver: semantic-release](https://img.shields.io/badge/semver-semantic--release-blue.svg)](https://github.com/semantic-release/semantic-release)
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+
+
 
 AEM MCP Server is a full-featured Model Context Protocol (MCP) server for Adobe Experience Manager (AEM). 
 It provides a simple integration with any AI Agent.
@@ -14,88 +16,78 @@ This project is designed for non-technical persons who want to manage AEM via na
 
 ## Overview
 
-- **Chat with your AEM instance** for content, component, and asset operations.
-- **AI IDEs integration** (Cursor, Copilot, Webstorm, VS Code, etc.)
-- **Supports both AEMaaCS and self-hosted instances**
-- **Modern, TypeScript-based AEM MCP server**
-- **REST/JSON-RPC API** with latest MCP features.
+- **Manage your AEM instance with natural language** — content, components, assets, workflows
+- **Works with any MCP-compatible client:**
+  - **AI IDEs** — Cursor, VS Code + Copilot, Windsurf, Cline, JetBrains AI Assistant, Zed
+  - **CLI agents** — Claude Code, GitHub Copilot CLI, Gemini CLI, Amazon Q CLI
+  - **Chat & desktop apps** — Claude Desktop, ChatGPT Desktop, Goose
+- **Supports both AEMaaCS and self-hosted AEM instances**
+- **Two transport modes** — stdio (agent-managed) and streamable HTTP
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20.19.0+ || 22.12.0+ || 23+
 - Access to an AEM instance (local or remote)
 
 ### Installation
+
 ```sh
 npm install aem-mcp-server -g
 ```
 
-### Start the Server
-With default settings (admin:admin credentials for http://localhost:4502):
+### Two Transport Modes
+
+AEM MCP Server supports two transport modes. In both cases, the AI agent is configured via the `mcp.json` (or equivalent) settings file in your IDE.
+
+#### 1. Stdio Transport (recommended)
+
+No manual server start needed — the AI agent spawns the process automatically.
+
+Add to your project's MCP config (`.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, etc.):
+
+```json
+{
+  "mcpServers": {
+    "AEM": {
+      "command": "aem-mcp",
+      "args": ["-t", "stdio", "-H", "http://localhost:4502", "-u", "admin", "-p", "admin"]
+    }
+  }
+}
+```
+
+> **Secrets:** Since MCP config files are typically committed to the repo, avoid hardcoding credentials. Use your client's env var syntax instead:
+>
+> | Client | Syntax |
+> |---|---|
+> | Claude Code (`.mcp.json`) | `${AEM_PASSWORD}` or `${AEM_PASSWORD:-admin}` |
+> | VS Code / Copilot | `${input:aem-password}` (prompts securely) or `envFile` |
+> | Cursor | `${env:AEM_PASSWORD}` |
+>
+> Example with env var references (Claude Code):
+> ```json
+> {
+>   "mcpServers": {
+>     "AEM": {
+>       "command": "aem-mcp",
+>       "args": ["-t", "stdio", "-H", "${AEM_HOST:-http://localhost:4502}", "-u", "${AEM_USER:-admin}", "-p", "${AEM_PASSWORD:-admin}"]
+>     }
+>   }
+> }
+> ```
+
+#### 2. Streamable HTTP Transport
+
+Start the server manually, then point your AI agent to the URL.
+
 ```sh
-aem-mcp
+aem-mcp -H=http://localhost:4502 -u=admin -p=admin
 ```
 
-### Configuration
-```
-Options:
-      --version  Show version number                                   [boolean]
-  -H, --host                         [string] [default: "http://localhost:4502"]
-  -u, --user                                         [string] [default: "admin"]
-  -p, --pass                                         [string] [default: "admin"]
-  -i, --id       clientId                                 [string] [default: ""]
-  -s, --secret   clientSecret                             [string] [default: ""]
-  -m, --mcpPort                                         [number] [default: 8502]
-  -h, --help     Show help                                             [boolean]
-```
-
-For AEMaaCS, use the `clientId` and `clientSecret` for authentication. [More info](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation).
-For self-hosted AEM use user/pass. The default credentials are `admin:admin`.
-
-### Example Command
-```sh
-aem-mcp -u=user@domain.com -p=mypass -H=https://author-qa.domain.com
-```
-
-### Add AEM MCP to AI IDE
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=eyJ1cmwiOiJodHRwOi8vMTI3LjAuMC4xOjg1MDIvbWNwIn0%3D)
-
----
-
-## Features
-
-- **AEM Page & Asset Management**: Create, update, delete, activate, deactivate, and replicate pages and assets
-- **Component Operations**: Validate, update, scan, and manage AEM components (including Experience Fragments)
-- **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
-- **Replication & Rollout**: Publish/unpublish content, roll out changes to language copies
-- **Text & Image Extraction**: Extract all text and images from pages, including fragments
-- **Template & Structure Discovery**: List templates, analyze page/component structure
-- **JCR Node Access**: Legacy and modern node/content access
-- **AI/LLM Integration**: Natural language interface for AEM via OpenAI, Anthropic, Ollama, or custom LLMs
-- **Security**: Auth, environment-based config, and safe operation defaults
-
----
-
-## AI IDE Integration (Cursor, Copilot, etc.)
-
-AEM MCP Server is compatible with modern AI IDEs and code editors that support MCP protocol, such as **Cursor** and **Copilot** (eg in WebStorm or VS Code).
-
-### How to Connect:
-1. **Install and run the AEM MCP Server** as described above.
-2. **Configure your IDE** to connect to the MCP server:
-   - Open your IDE's MCP server settings.
-   - Add a new server with:
-     - **Type:** Custom MCP
-     - **url:** `http://127.0.0.1:8502/mcp`
-
-3. **Restart your IDE** if needed. The IDE will now be able to:
-   - List, search, and manage AEM content
-   - Run MCP methods (CRUD, search, rollout, etc.)
-
-Sample for AI-based code editors or custom clients:
+Add to your MCP config:
 
 ```json
 {
@@ -107,9 +99,56 @@ Sample for AI-based code editors or custom clients:
 }
 ```
 
-![cursor.png](docs/cursor.png)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AEM&config=eyJ1cmwiOiJodHRwOi8vMTI3LjAuMC4xOjg1MDIvbWNwIn0%3D)
+
+### Configuration
+
+```
+Options:
+      --version    Show version number                                 [boolean]
+  -H, --host                         [string] [default: "http://localhost:4502"]
+  -u, --user                                         [string] [default: "admin"]
+  -p, --pass                                         [string] [default: "admin"]
+  -i, --id         clientId                               [string] [default: ""]
+  -s, --secret     clientSecret                           [string] [default: ""]
+  -m, --mcpPort                                         [number] [default: 8502]
+  -t, --transport  Transport mode: http (default) or stdio
+                           [string] [choices: "http", "stdio"] [default: "http"]
+  -I, --instances  Named AEM instances: "local:http://localhost:4502:admin:admin
+                   ,qa:https://qa.example.com:user:pass"  [string] [default: ""]
+  -h, --help       Show help                                           [boolean]
+```
+
+**Authentication:**
+- For **AEMaaCS**, use `clientId` and `clientSecret` for OAuth S2S authentication. [More info](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation).
+- For **self-hosted AEM**, use `user`/`pass`. Default credentials are `admin:admin`.
+
+**Multi-instance:** Connect to multiple AEM instances simultaneously:
+```sh
+aem-mcp --instances "author:http://localhost:4502:admin:admin,publish:http://localhost:4503:admin:admin"
+```
+All tools will get an `instance` parameter to target a specific instance.
+
+---
+
+## Features
+
+- **AEM Page & Asset Management**: Create, update, delete, activate, deactivate, and replicate pages and assets
+- **Component Operations**: Update, scan, add, convert, and bulk-manage AEM components (including Experience Fragments)
+- **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
+- **Replication & Rollout**: Publish/unpublish content, roll out changes to language copies
+- **Text & Image Extraction**: Extract all text and images from pages, including fragments
+- **Template & Structure Discovery**: List templates, analyze page/component structure
+- **Workflow and Inbox Operations**: List, start, advance, suspend, and delegate workflow stages
+- **JCR Node Access**: Legacy and modern node/content access
+- **AI/LLM Integration**: Natural language interface for AEM via any MCP-compatible client
+- **Security**: Auth, environment-based config, and safe operation defaults
+
+---
 
 ## Usage
+
+Once configured in your AI IDE, just ask in natural language:
 
 ```
 List all components on MyPage
@@ -121,5 +160,6 @@ For detailed API documentation, please refer to the [API Docs](docs/API.md).
 
 ## Similar Projects
 
-- https://github.com/indrasishbanerjee/aem-mcp-server (Used as a base for this project)
-- https://www.npmjs.com/package/@myea/aem-mcp-handler (Looks like an original source of the above project)
+1. https://github.com/easingthemes/aem-mcp-server (Used as a base for this project)
+1. https://github.com/indrasishbanerjee/aem-mcp-server (Used as a base for #1)
+1. https://www.npmjs.com/package/@myea/aem-mcp-handler (Looks like an original source of #2)

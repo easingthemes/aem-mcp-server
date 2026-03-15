@@ -15,6 +15,35 @@ Start by filing an issue. The existing committers on this project work to reach
 consensus around project direction and issue solutions within issue threads
 (when appropriate).
 
+## Automated Release
+
+### Release
+- based on Angular Commit Message Conventions in commits -
+  https://github.com/angular/angular/blob/master/CONTRIBUTING.md#commit-message-header
+- Commit message format is used to build:
+  * Release notes
+  * Changelog updates
+  * NPM package semver
+
+### Commit message Convention
+
+```
+<type>(<scope>): <short summary>
+│       │             │
+│       │             └─⫸ Summary in present tense. Not capitalized. No period at the end.
+│       │
+│       └─⫸ Commit Scope (optional): config|utils|tasks
+│
+└─⫸ Commit Type: build|ci|docs|feat|fix|perf|refactor|test
+```
+#### Major Version Release:
+
+In order to trigger Major Version upgrade, BREAKING CHANGE: needs to be in the footer of a commit message:
+```
+<type>(<scope>): <short summary>
+<BLANK LINE>
+BREAKING CHANGE: <breaking change summary>
+```
 ## Code Reviews
 
 All submissions should come in the form of pull requests and need to be reviewed
