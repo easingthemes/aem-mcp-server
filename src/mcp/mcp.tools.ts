@@ -248,6 +248,39 @@ const contentFragmentSchemas = {
   }).passthrough(),
 };
 
+// ─── Experience Fragments ─────────────────────────────
+const experienceFragmentSchemas = {
+  getExperienceFragment: z.object({
+    path: z.string().describe('Path to the experience fragment page'),
+  }).passthrough(),
+  listExperienceFragments: z.object({
+    path: z.string().optional().describe('Root path (default: /content/experience-fragments)'),
+    template: z.string().optional().describe('Filter by template path'),
+    limit: z.number().optional().describe('Max results (default: 20)'),
+    offset: z.number().optional().describe('Pagination offset (default: 0)'),
+  }).passthrough(),
+  manageExperienceFragment: z.object({
+    action: z.enum(['create', 'update', 'delete']).describe('Action to perform'),
+    xfPath: z.string().optional().describe('Existing XF path (required for update/delete)'),
+    parentPath: z.string().optional().describe('Parent path for new XF (required for create)'),
+    name: z.string().optional().describe('Node name (auto-generated from title if omitted)'),
+    title: z.string().optional().describe('XF title (required for create)'),
+    template: z.string().optional().describe('XF template path (required for create)'),
+    description: z.string().optional().describe('XF description'),
+    tags: z.array(z.string()).optional().describe('Tags to apply'),
+    force: z.boolean().optional().describe('Force delete even if referenced'),
+  }).passthrough(),
+  manageExperienceFragmentVariation: z.object({
+    action: z.enum(['create', 'update', 'delete']).describe('Action to perform'),
+    xfPath: z.string().describe('Parent experience fragment path'),
+    variationName: z.string().describe('Variation identifier'),
+    variationType: z.enum(['web', 'email', 'social', 'custom']).optional().describe('Variation type (default: web)'),
+    title: z.string().optional().describe('Variation title (required for create)'),
+    template: z.string().optional().describe('Template for the variation'),
+    force: z.boolean().optional().describe('Force deletion'),
+  }).passthrough(),
+};
+
 // ─── Combined Schemas ─────────────────────────────────
 export const toolSchemas = {
   ...contentSchemas,
@@ -259,6 +292,7 @@ export const toolSchemas = {
   ...templateSchemas,
   ...workflowSchemas,
   ...contentFragmentSchemas,
+  ...experienceFragmentSchemas,
 } as const;
 
 export type ToolName = keyof typeof toolSchemas;
@@ -311,6 +345,10 @@ export const toolDescriptions: Record<ToolName, string> = {
   listContentFragments: 'List content fragments under a path with optional model filter',
   manageContentFragment: 'Create, update, or delete a content fragment. Use action param to specify operation.',
   manageContentFragmentVariation: 'Create, update, or delete a variation within a content fragment',
+  getExperienceFragment: 'Get an experience fragment with all variations, components, and metadata',
+  listExperienceFragments: 'List experience fragments under a path with optional template filter',
+  manageExperienceFragment: 'Create, update, or delete an experience fragment. Auto-creates master variation on create.',
+  manageExperienceFragmentVariation: 'Create, update, or delete a variation within an experience fragment',
 };
 
 /**

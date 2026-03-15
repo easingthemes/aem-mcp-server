@@ -3,6 +3,7 @@ import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpEr
 import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
 import { ContentFragmentManager } from './aem.content-fragments.js';
+import { ExperienceFragmentManager } from './aem.experience-fragments.js';
 import { LOGGER } from '../utils/logger.js';
 
 export interface AEMConnectorConfig {
@@ -35,6 +36,7 @@ export class AEMConnector {
   aemConfig: AEMConfig;
   private readonly fetch: AEMFetch;
   readonly contentFragments: ContentFragmentManager;
+  readonly experienceFragments: ExperienceFragmentManager;
 
   constructor(params: CliParams) {
     this.isInitialized = false;
@@ -47,6 +49,7 @@ export class AEMConnector {
       timeout: this.aemConfig.queries.timeoutMs,
     });
     this.contentFragments = new ContentFragmentManager(this.fetch, this.isAEMaaCS);
+    this.experienceFragments = new ExperienceFragmentManager(this.fetch, this.config.aem.host);
   }
 
   async init() {
@@ -3673,5 +3676,17 @@ export class AEMConnector {
   }
   async manageContentFragmentVariation(params: any): Promise<object> {
     return this.contentFragments.manageContentFragmentVariation(params);
+  }
+  async getExperienceFragment(path: string): Promise<object> {
+    return this.experienceFragments.getExperienceFragment(path);
+  }
+  async listExperienceFragments(params: any): Promise<object> {
+    return this.experienceFragments.listExperienceFragments(params);
+  }
+  async manageExperienceFragment(params: any): Promise<object> {
+    return this.experienceFragments.manageExperienceFragment(params);
+  }
+  async manageExperienceFragmentVariation(params: any): Promise<object> {
+    return this.experienceFragments.manageExperienceFragmentVariation(params);
   }
 }

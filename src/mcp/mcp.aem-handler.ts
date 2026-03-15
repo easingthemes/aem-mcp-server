@@ -140,6 +140,14 @@ export class MCPRequestHandler {
           return await this.aemConnector.manageContentFragment(params);
         case 'manageContentFragmentVariation':
           return await this.aemConnector.manageContentFragmentVariation(params);
+        case 'getExperienceFragment':
+          return await this.aemConnector.getExperienceFragment(params.path);
+        case 'listExperienceFragments':
+          return await this.aemConnector.listExperienceFragments(params);
+        case 'manageExperienceFragment':
+          return await this.aemConnector.manageExperienceFragment(params);
+        case 'manageExperienceFragmentVariation':
+          return await this.aemConnector.manageExperienceFragmentVariation(params);
         default:
           throw new Error(`Unknown method: ${method}`);
       }
