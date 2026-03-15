@@ -1,6 +1,7 @@
 import { AEMConnector } from '../aem/aem.connector.js';
 import { CliParams } from '../types.js';
 import { handleAEMHttpError } from '../aem/aem.errors.js';
+import { toolSchemas, ToolName } from './mcp.tools.js';
 import { LOGGER } from '../utils/logger.js';
 
 export class MCPRequestHandler {
@@ -22,6 +23,19 @@ export class MCPRequestHandler {
   }
 
   async handleRequest(method: string, params: any) {
+    // Validate input against Zod schema if available
+    const schema = toolSchemas[method as ToolName];
+    if (schema) {
+      const result = schema.safeParse(params);
+      if (!result.success) {
+        return {
+          error: `Invalid input: ${result.error.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ')}`,
+          method,
+          params,
+        };
+      }
+    }
+
     try {
       await this.init();
     } catch (error: any) {

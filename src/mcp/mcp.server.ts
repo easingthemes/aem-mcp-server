@@ -12,7 +12,7 @@ export const createMCPServer = (cliParams: CliParams) => {
 
   const serverInfo = {
     name: 'aem-mcp-server',
-    version: '1.0.0',
+    version: '1.3.9',
   };
   const serverData = {
     capabilities: {
