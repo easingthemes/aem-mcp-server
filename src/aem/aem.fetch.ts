@@ -322,6 +322,31 @@ export class AEMFetch {
   }
 
   /**
+   * Performs a PUT request with JSON body and optional timeout.
+   * Used by AEMaaCS Content Fragment Management API for updates.
+   */
+  async put(url: string, data: any, options: RequestInit = {}, timeout?: number): Promise<any> {
+    let body: BodyInit;
+    const headers = options.headers instanceof Headers
+      ? new Headers(options.headers)
+      : new Headers(options.headers || {});
+
+    if (data instanceof URLSearchParams) {
+      body = data;
+      headers.set('Content-Type', 'application/x-www-form-urlencoded');
+    } else {
+      body = JSON.stringify(data);
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+    }
+
+    const fullUrl = this.buildUrlWithParams(url);
+    const { headers: _, ...optionsWithoutHeaders } = options;
+    return this.request(fullUrl, { ...optionsWithoutHeaders, method: 'PUT', body, headers }, timeout);
+  }
+
+  /**
    * Performs a POST request and returns the raw Response object to access headers.
    * Useful for endpoints that return Location headers (like workflow creation).
    * @param url Relative URL string
