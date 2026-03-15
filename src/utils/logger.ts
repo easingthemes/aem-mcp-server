@@ -1,7 +1,7 @@
 /**
- * Simple logger utility.
- * Must be disabled for production use to not interfere with Cursor stdio/stdout.
- * Set ENABLE_LOGGER=true in env to enable logging (default: disabled)
+ * Logger utility.
+ * - warn/error: always write to stderr (safe for stdio transport)
+ * - log/info: gated behind MCP_LOGGER env var (writes to stdout, would corrupt stdio transport)
  */
 
 const link = (text: string, url: string) => {
