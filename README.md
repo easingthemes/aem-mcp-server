@@ -22,7 +22,7 @@ This project is designed for non-technical persons who want to manage AEM via na
   - **CLI agents** — Claude Code, GitHub Copilot CLI, Gemini CLI, Amazon Q CLI
   - **Chat & desktop apps** — Claude Desktop, ChatGPT Desktop, Goose
 - **Supports both AEMaaCS and self-hosted AEM instances**
-- **Two transport modes** — stdio (agent-managed) and streamable HTTP
+- **Two transport modes** — stdio via `npx` (recommended, zero install) and streamable HTTP
 
 ---
 
@@ -32,19 +32,9 @@ This project is designed for non-technical persons who want to manage AEM via na
 - Node.js 20.19.0+ || 22.12.0+ || 23+
 - Access to an AEM instance (local or remote)
 
-### Installation
+### Stdio Transport (recommended)
 
-```sh
-npm install aem-mcp-server -g
-```
-
-### Two Transport Modes
-
-AEM MCP Server supports two transport modes. In both cases, the AI agent is configured via the `mcp.json` (or equivalent) settings file in your IDE.
-
-#### 1. Stdio Transport (recommended)
-
-No manual server start needed — the AI agent spawns the process automatically.
+No installation needed — the AI agent downloads and spawns the process automatically via `npx`.
 
 Add to your project's MCP config (`.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, etc.):
 
@@ -52,8 +42,8 @@ Add to your project's MCP config (`.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.
 {
   "mcpServers": {
     "AEM": {
-      "command": "aem-mcp",
-      "args": ["-t", "stdio", "-H", "http://localhost:4502", "-u", "admin", "-p", "admin"]
+      "command": "npx",
+      "args": ["-y", "aem-mcp-server", "-t", "stdio", "-H", "http://localhost:4502", "-u", "admin", "-p", "admin"]
     }
   }
 }
@@ -72,22 +62,23 @@ Add to your project's MCP config (`.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.
 > {
 >   "mcpServers": {
 >     "AEM": {
->       "command": "aem-mcp",
->       "args": ["-t", "stdio", "-H", "${AEM_HOST:-http://localhost:4502}", "-u", "${AEM_USER:-admin}", "-p", "${AEM_PASSWORD:-admin}"]
+>       "command": "npx",
+>       "args": ["-y", "aem-mcp-server", "-t", "stdio", "-H", "${AEM_HOST:-http://localhost:4502}", "-u", "${AEM_USER:-admin}", "-p", "${AEM_PASSWORD:-admin}"]
 >     }
 >   }
 > }
 > ```
 
-#### 2. Streamable HTTP Transport
+### Streamable HTTP Transport (alternative)
 
-Start the server manually, then point your AI agent to the URL.
+For scenarios where you need a persistent server (shared team server, multiple clients connecting simultaneously, etc.), install globally and start the server manually:
 
 ```sh
+npm install aem-mcp-server -g
 aem-mcp -H=http://localhost:4502 -u=admin -p=admin
 ```
 
-Add to your MCP config:
+Then point your AI agent to the URL:
 
 ```json
 {
