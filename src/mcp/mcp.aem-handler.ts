@@ -132,6 +132,14 @@ export class MCPRequestHandler {
           return await this.aemConnector.delegateWorkItem(params.workItemPath, params.delegatee);
         case 'getWorkItemRoutes':
           return await this.aemConnector.getWorkItemRoutes(params.workItemPath);
+        case 'getContentFragment':
+          return await this.aemConnector.getContentFragment(params.path);
+        case 'listContentFragments':
+          return await this.aemConnector.listContentFragments(params);
+        case 'manageContentFragment':
+          return await this.aemConnector.manageContentFragment(params);
+        case 'manageContentFragmentVariation':
+          return await this.aemConnector.manageContentFragmentVariation(params);
         default:
           throw new Error(`Unknown method: ${method}`);
       }

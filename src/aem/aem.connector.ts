@@ -2,6 +2,7 @@ import { AEMConfig, getAEMConfig, isValidContentPath, isValidLocale } from './ae
 import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpError, safeExecute } from './aem.errors.js';
 import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
+import { ContentFragmentManager } from './aem.content-fragments.js';
 import { LOGGER } from '../utils/logger.js';
 
 export interface AEMConnectorConfig {
@@ -33,6 +34,7 @@ export class AEMConnector {
   config: AEMConnectorConfig;
   aemConfig: AEMConfig;
   private readonly fetch: AEMFetch;
+  readonly contentFragments: ContentFragmentManager;
 
   constructor(params: CliParams) {
     this.isInitialized = false;
@@ -44,6 +46,7 @@ export class AEMConnector {
       auth: this.config.aem.auth,
       timeout: this.aemConfig.queries.timeoutMs,
     });
+    this.contentFragments = new ContentFragmentManager(this.fetch, this.isAEMaaCS);
   }
 
   async init() {
@@ -3656,5 +3659,19 @@ export class AEMConnector {
         timestamp: new Date().toISOString()
       }, 'getWorkItemRoutes');
     }, 'getWorkItemRoutes');
+  }
+
+  // ─── Content Fragments (delegated) ───────────────────
+  async getContentFragment(path: string): Promise<object> {
+    return this.contentFragments.getContentFragment(path);
+  }
+  async listContentFragments(params: any): Promise<object> {
+    return this.contentFragments.listContentFragments(params);
+  }
+  async manageContentFragment(params: any): Promise<object> {
+    return this.contentFragments.manageContentFragment(params);
+  }
+  async manageContentFragmentVariation(params: any): Promise<object> {
+    return this.contentFragments.manageContentFragmentVariation(params);
   }
 }
