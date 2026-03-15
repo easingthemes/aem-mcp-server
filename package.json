@@ -42,7 +42,9 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "yargs": "^18.0.0"
+    "yargs": "^18.0.0",
+    "zod": "3.24.4",
+    "zod-to-json-schema": "3.24.6"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
