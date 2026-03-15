@@ -8,8 +8,8 @@ import { CliParams } from '../types.js';
 import { LOGGER } from '../utils/logger.js';
 
 export const handleRequest = async (req: Request, res: Response, cliParams: CliParams) => {
-  LOGGER.log('1.Received MCP request:', req.body);
-  const { jsonrpc, id, method, params } = req.body;
+  LOGGER.log('Received MCP request:', req.body);
+  const { jsonrpc, id, method } = req.body;
   if (jsonrpc !== '2.0' || !method) {
     res.status(400).json({
       jsonrpc: '2.0',
@@ -25,23 +25,45 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
 
     if (sessionId && transports[sessionId]) {
       // Reuse existing transport
-      LOGGER.log(`Session exists: ${sessionId}`);
-      transport = transports[sessionId]
-    } else if (!sessionId && isInitializeRequest(req.body)) {
-      // New initialization request - use JSON response mode
+      LOGGER.log(`Using existing session: ${sessionId}`);
+      transport = transports[sessionId];
+    } else if (isInitializeRequest(req.body)) {
+      // New initialization request OR re-initialization after server restart
+      // Allow re-initialization even if sessionId is provided but doesn't exist (server was restarted)
+      if (sessionId && !transports[sessionId]) {
+        LOGGER.log(`Session ID ${sessionId} not found - server was likely restarted. Re-initializing...`);
+      } else {
+        LOGGER.log('New initialization request');
+      }
+      
+      // Create new transport - use JSON response mode
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         enableJsonResponse: true, // Enable JSON response mode
-        onsessioninitialized: (sessionId) => {
+        onsessioninitialized: (newSessionId) => {
           // Store the transport by session ID when session is initialized
           // This avoids race conditions where requests might come in before the session is stored
-          LOGGER.log(`Session initialized with ID: ${sessionId}`);
-          transports[sessionId] = transport;
+          LOGGER.log(`Session initialized with ID: ${newSessionId}`);
+          transports[newSessionId] = transport;
+          
+          // If old session ID was provided but didn't exist, log the mapping
+          if (sessionId && sessionId !== newSessionId) {
+            LOGGER.log(`Session ID changed from ${sessionId} to ${newSessionId} (server restart detected)`);
+          }
         }
       });
 
+      // Clean up transport when closed
+      transport.onclose = () => {
+        const sid = transport.sessionId;
+        if (sid && transports[sid]) {
+          LOGGER.log(`Transport closed for session ${sid}, removing from transports map`);
+          delete transports[sid];
+        }
+      };
+
       // Connect the transport to the MCP server BEFORE handling the request
-      LOGGER.log('Connecting to MCP server with CLI params:', cliParams);
+      LOGGER.log('Connecting to MCP server');
       const server = createMCPServer(cliParams);
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
@@ -53,7 +75,7 @@ export const handleRequest = async (req: Request, res: Response, cliParams: CliP
         jsonrpc: '2.0',
         error: {
           code: -32000,
-          message: 'Bad Request: No valid session ID provided',
+          message: 'Bad Request: No valid session ID provided. Please re-initialize the MCP server.',
         },
         id: null,
       });

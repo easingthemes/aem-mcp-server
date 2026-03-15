@@ -58,6 +58,7 @@ const createServer = (params: CliParams = {}) => {
     }));
   });
 
+
   app.get('/', (req: Request, res: Response) => {
     res.json({
       name: 'AEM MCP Gateway Server',

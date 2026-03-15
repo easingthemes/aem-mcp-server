@@ -131,7 +131,31 @@ dist
 .pnp.*
 
 /dist/*
-/.idea/
 
-/.mcpregistry_github_token
-/.mcpregistry_registry_token
+# Claude Code
+.claude/settings.local.json
+
+# IDE files
+*.iml
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+*~
+
+# MCP Registry tokens
+.mcpregistry_github_token
+.mcpregistry_registry_token
+
+# AEM connection and auth files
+.aem-connection.json
+.aem-oauth-tokens.json
+
+# Backup directories
+.backup/
+
+# Test files
+TEST_RESULTS.md
+INTERACTIVE_TESTING.md
+comprehensive-test.js
