@@ -217,6 +217,37 @@ const workflowSchemas = {
   }).passthrough(),
 };
 
+// ─── Content Fragments ────────────────────────────────
+const contentFragmentSchemas = {
+  getContentFragment: z.object({
+    path: z.string().describe('Path to the content fragment in DAM (e.g., /content/dam/site/cf/my-article)'),
+  }).passthrough(),
+  listContentFragments: z.object({
+    path: z.string().describe('Parent path to search under (e.g., /content/dam/site/cf)'),
+    model: z.string().optional().describe('Filter by CF model path'),
+    limit: z.number().optional().describe('Max results (default: 20)'),
+    offset: z.number().optional().describe('Pagination offset (default: 0)'),
+  }).passthrough(),
+  manageContentFragment: z.object({
+    action: z.enum(['create', 'update', 'delete']).describe('Action to perform'),
+    fragmentPath: z.string().optional().describe('Path to existing CF (required for update/delete)'),
+    parentPath: z.string().optional().describe('Parent folder in DAM (required for create)'),
+    title: z.string().optional().describe('Fragment title (required for create)'),
+    name: z.string().optional().describe('Node name (auto-generated from title if omitted)'),
+    model: z.string().optional().describe('CF model path (required for create)'),
+    fields: z.record(z.unknown()).optional().describe('Field values as { fieldName: value }'),
+    description: z.string().optional().describe('Fragment description'),
+    force: z.boolean().optional().describe('Force delete even if referenced'),
+  }).passthrough(),
+  manageContentFragmentVariation: z.object({
+    action: z.enum(['create', 'update', 'delete']).describe('Action to perform'),
+    fragmentPath: z.string().describe('Path to the parent content fragment'),
+    variationName: z.string().describe('Variation identifier'),
+    title: z.string().optional().describe('Variation title (required for create)'),
+    fields: z.record(z.unknown()).optional().describe('Field overrides as { fieldName: value }'),
+  }).passthrough(),
+};
+
 // ─── Combined Schemas ─────────────────────────────────
 export const toolSchemas = {
   ...contentSchemas,
@@ -227,6 +258,7 @@ export const toolSchemas = {
   ...searchSchemas,
   ...templateSchemas,
   ...workflowSchemas,
+  ...contentFragmentSchemas,
 } as const;
 
 export type ToolName = keyof typeof toolSchemas;
@@ -275,6 +307,10 @@ export const toolDescriptions: Record<ToolName, string> = {
   completeWorkItem: 'Complete or advance a work item to the next step in the workflow',
   delegateWorkItem: 'Delegate a work item to another user or group',
   getWorkItemRoutes: 'Get available routes for a work item (to see what steps are available)',
+  getContentFragment: 'Get a content fragment with all fields, variations, and metadata',
+  listContentFragments: 'List content fragments under a path with optional model filter',
+  manageContentFragment: 'Create, update, or delete a content fragment. Use action param to specify operation.',
+  manageContentFragmentVariation: 'Create, update, or delete a variation within a content fragment',
 };
 
 /**
