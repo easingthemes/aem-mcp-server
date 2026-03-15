@@ -3,7 +3,6 @@ import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpEr
 import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
 import { LOGGER } from '../utils/logger.js';
-import { exec } from 'child_process';
 
 export interface AEMConnectorConfig {
   aem: {
@@ -48,12 +47,8 @@ export class AEMConnector {
   }
 
   async init() {
-    try {
-      await this.fetch.init();
-      this.isInitialized = true;
-    } catch (error: any) {
-      this.isInitialized = false;
-    }
+    await this.fetch.init();
+    this.isInitialized = true;
   }
 
   isConfigAEMaaCS(): boolean {
@@ -99,49 +94,8 @@ export class AEMConnector {
     };
   }
 
-  /**
-   * Preview a page in the browser by opening the preview URL.
-   * The preview URL format is: <host>/<path_of_the_page>.html?wcmmode=disabled
-   * 
-   * @param pagePath - Path to the page (e.g., /content/site/en/page)
-   */
-  private async previewPageInBrowser(pagePath: string): Promise<void> {
-    try {
-      // Construct the preview URL
-      const host = this.config.aem.host;
-      const previewUrl = `${host}${pagePath}.html?wcmmode=disabled`;
-      
-      LOGGER.log(`🌐 Opening browser preview: ${previewUrl}`);
-      
-      // Open browser based on platform
-      const platform = process.platform;
-      let command: string;
-      
-      if (platform === 'darwin') {
-        // macOS - Try to open Chrome first (better light mode support), fallback to default browser
-        // Chrome respects system light mode preferences better
-        command = `open -a "Google Chrome" "${previewUrl}" 2>/dev/null || open -a "Chromium" "${previewUrl}" 2>/dev/null || open "${previewUrl}"`;
-      } else if (platform === 'win32') {
-        // Windows - Try Chrome first
-        command = `start chrome "${previewUrl}" 2>nul || start "" "${previewUrl}"`;
-      } else {
-        // Linux and other Unix-like systems - Try Chrome/Chromium first
-        command = `google-chrome "${previewUrl}" 2>/dev/null || chromium-browser "${previewUrl}" 2>/dev/null || xdg-open "${previewUrl}"`;
-      }
-      
-      exec(command, (error) => {
-        if (error) {
-          LOGGER.warn(`Could not open browser automatically: ${error.message}`);
-          LOGGER.log(`Please open this URL manually: ${previewUrl}`);
-        } else {
-          LOGGER.log(`✅ Browser opened successfully`);
-        }
-      });
-    } catch (error: any) {
-      LOGGER.warn(`Error opening browser preview: ${error.message}`);
-      const previewUrl = `${this.config.aem.host}${pagePath}.html?wcmmode=disabled`;
-      LOGGER.log(`Please open this URL manually: ${previewUrl}`);
-    }
+  private getPreviewUrl(pagePath: string): string {
+    return `${this.config.aem.host}${pagePath}.html?wcmmode=disabled`;
   }
 
   async testConnection(): Promise<{ aem: boolean; auth: boolean }> {
@@ -1656,12 +1610,10 @@ export class AEMConnector {
         LOGGER.warn(`Could not check container status: ${error.message}`);
       }
       
-      // Preview the page in browser to show the newly added component
-      await this.previewPageInBrowser(pagePath);
-      
       return createSuccessResponse({
         success: true,
         pagePath,
+        previewUrl: this.getPreviewUrl(pagePath),
         componentPath: componentNodePath,
         resourceType,
         isContainer,
@@ -1681,7 +1633,6 @@ export class AEMConnector {
         properties,
         verification: verificationResponse,
         timestamp: new Date().toISOString(),
-        previewUrl: `${this.config.aem.host}${pagePath}.html?wcmmode=disabled`
       }, 'addComponent');
     }, 'addComponent');
   }
@@ -2962,12 +2913,10 @@ export class AEMConnector {
         errors: []
       };
 
-      // Preview the page in browser
-      await this.previewPageInBrowser(newPagePath);
-
       return createSuccessResponse({
         success: true,
         pagePath: newPagePath,
+        previewUrl: this.getPreviewUrl(newPagePath),
         title,
         templateUsed: selectedTemplatePath,
         jcrContentCreated: hasJcrContent,
@@ -2982,13 +2931,11 @@ export class AEMConnector {
             'jcr:content node created',
             templateInitialContent ? 'Initial content structure created from template' : 'No initial content in template',
             'Page structure verified',
-            'Accessibility check completed',
-            'Browser preview opened'
+            'Accessibility check completed'
           ],
           initialContentCreated: templateInitialContent !== null
         },
         pageStructure: verificationResponse.data,
-        previewUrl: `${this.config.aem.host}${newPagePath}.html?wcmmode=disabled`
       }, 'createPageWithTemplate');
     }, 'createPageWithTemplate');
   }

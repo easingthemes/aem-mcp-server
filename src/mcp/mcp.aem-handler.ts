@@ -23,17 +23,14 @@ export class MCPRequestHandler {
   }
 
   async handleRequest(method: string, params: any) {
-    // Validate input against Zod schema if available
+    // Validate input against Zod schema (also handles unknown tool names gracefully)
     const schema = toolSchemas[method as ToolName];
     if (schema) {
       const result = schema.safeParse(params);
       if (!result.success) {
-        return {
-          error: `Invalid input: ${result.error.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ')}`,
-          method,
-          params,
-        };
+        throw new Error(`Invalid input for ${method}: ${result.error.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ')}`);
       }
+      params = result.data;
     }
 
     try {
@@ -139,7 +136,8 @@ export class MCPRequestHandler {
           throw new Error(`Unknown method: ${method}`);
       }
     } catch (error: any) {
-      return { error: error.message, method, params };
+      LOGGER.error(`Error in tool ${method}:`, error.message);
+      throw error;
     }
   }
 }
