@@ -141,6 +141,10 @@ dist
 *.swo
 *~
 
+# MCP Registry tokens
+.mcpregistry_github_token
+.mcpregistry_registry_token
+
 # AEM connection and auth files
 .aem-connection.json
 .aem-oauth-tokens.json
