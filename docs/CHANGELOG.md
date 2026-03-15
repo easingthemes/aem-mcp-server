@@ -1,3 +1,13 @@
+# [1.5.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.4.0...v1.5.0) (2026-03-15)
+
+
+### Features
+
+* add ContentFragmentManager with AEMaaCS/6.5 routing ([97aae3e](https://github.com/easingthemes/aem-mcp-server/commit/97aae3e69628b6e41919fd3030e7bc7bbbdeb485))
+* add PUT method to AEMFetch for CF Management API ([403e750](https://github.com/easingthemes/aem-mcp-server/commit/403e75017074661a68bf85800f56fb3d3ed7dbef))
+* **cf:** add content fragment tool schemas and wire into connector/handler ([afd4161](https://github.com/easingthemes/aem-mcp-server/commit/afd4161f3e41ef37ba19b3ddebadbf884560f698))
+* **xf:** add experience fragment tools with CRUD and variation support ([07acd9f](https://github.com/easingthemes/aem-mcp-server/commit/07acd9f9acc93800a1ab7e0889e6fb7bc04b4038))
+
 # [1.4.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.3.9...v1.4.0) (2026-03-15)
 
 
