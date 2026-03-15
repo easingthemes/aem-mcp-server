@@ -33,13 +33,11 @@ export const LOGGER = {
     }
   },
   warn: (...args: any[]) => {
-    if (ENABLE_LOGGER) {
-      console.warn(`[${getCallerInfo()}]`, ...args);
-    }
+    // Always write warnings to stderr (safe for stdio transport)
+    console.warn(`[${getCallerInfo()}]`, ...args);
   },
   error: (...args: any[]) => {
-    if (ENABLE_LOGGER) {
-      console.error(`[${getCallerInfo()}]`, ...args);
-    }
+    // Always write errors to stderr (safe for stdio transport)
+    console.error(`[${getCallerInfo()}]`, ...args);
   },
 };
