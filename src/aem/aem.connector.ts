@@ -1170,9 +1170,18 @@ export class AEMConnector {
   }
 
   /**
-   * Apply cq:template child nodes to a component
+   * Apply cq:template child nodes to a component.
+   *
+   * Uses Sling POST servlet's `:operation=import` with `:contentType=json` so
+   * that the entire child subtree (including deeply nested grand-children) is
+   * created as real JCR nodes in a single request per top-level child.
+   *
+   * Previous implementation used URLSearchParams (form-urlencoded) which cannot
+   * represent nested structures — any object values were serialized via
+   * JSON.stringify and stored as string properties instead of child nodes.
+   *
    * @param targetPath - Path where the component is created
-   * @param templateChildNodes - Child nodes from template (e.g., col_1, col_2, etc.)
+   * @param templateChildNodes - Child nodes from template (e.g., col_1, col_2, par, etc.)
    */
   private async applyTemplateChildNodes(targetPath: string, templateChildNodes: Record<string, any>): Promise<void> {
     if (!templateChildNodes || Object.keys(templateChildNodes).length === 0) {
@@ -1184,34 +1193,22 @@ export class AEMConnector {
     for (const [childName, childNode] of Object.entries(templateChildNodes)) {
       try {
         const childPath = `${targetPath}/${childName}`;
-        const childFormData = new URLSearchParams();
-        
-        // Add jcr:primaryType
-        if (childNode['jcr:primaryType']) {
-          childFormData.append('jcr:primaryType', childNode['jcr:primaryType']);
-        } else {
-          childFormData.append('jcr:primaryType', 'nt:unstructured');
+
+        // Ensure jcr:primaryType is set
+        const nodeData = { ...childNode };
+        if (!nodeData['jcr:primaryType']) {
+          nodeData['jcr:primaryType'] = 'nt:unstructured';
         }
 
-        // Add all properties from template child node
-        for (const [key, value] of Object.entries(childNode)) {
-          if (key === 'jcr:primaryType') continue; // Already added
-          
-          if (value !== null && value !== undefined) {
-            if (Array.isArray(value)) {
-              value.forEach((item) => {
-                childFormData.append(key, item.toString());
-              });
-            } else if (typeof value === 'object') {
-              // For nested objects, stringify them
-              childFormData.append(key, JSON.stringify(value));
-            } else {
-              childFormData.append(key, value.toString());
-            }
-          }
-        }
-
-        await this.fetch.post(childPath, childFormData);
+        // Use Sling import operation — this natively handles the full node
+        // tree at any depth, creating real JCR child nodes instead of
+        // stringifying nested objects as property values.
+        await this.fetch.post(childPath, {
+          ...nodeData,
+          ':operation': 'import',
+          ':contentType': 'json',
+          ':replace': 'true',
+        });
         LOGGER.log(`Created template child node: ${childPath}`);
       } catch (error: any) {
         LOGGER.warn(`Failed to create template child node ${childName}: ${error.message}`);
