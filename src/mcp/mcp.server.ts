@@ -1,6 +1,7 @@
-import { CallToolRequestSchema, ListToolsRequestSchema, InitializeRequestSchema, LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema, InitializeRequestSchema, LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { tools, injectInstanceParam, toolAnnotations } from './mcp.tools.js';
+import { getResourceDefinitions, readResource } from './mcp.resources.js';
 import { InstanceRegistry } from './mcp.instances.js';
 import { CliParams } from '../types.js';
 import { LOGGER } from '../utils/logger.js';
@@ -51,6 +52,26 @@ export const createMCPServer = (cliParams: CliParams) => {
         ...(toolAnnotations[tool.name] && { annotations: toolAnnotations[tool.name] }),
       })),
     };
+  });
+
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    const resources = instanceNames.flatMap((name) => getResourceDefinitions(name));
+    LOGGER.log('Received ListResourcesRequest', resources);
+    return { resources };
+  });
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    LOGGER.log('Received ReadResourceRequest', uri);
+
+    // Parse instance from URI: aem://{instance}/{key}
+    const match = uri.match(/^aem:\/\/([^/]+)\//);
+    const instanceName = match?.[1];
+    const handler = registry.getHandler(instanceName);
+    const connector = handler.aemConnector;
+
+    const content = await readResource(uri, connector);
+    return { contents: [content] };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
