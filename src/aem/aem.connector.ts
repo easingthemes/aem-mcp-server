@@ -2,6 +2,7 @@ import { AEMConfig, getAEMConfig, isValidContentPath, isValidLocale } from './ae
 import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpError, safeExecute } from './aem.errors.js';
 import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
+import { filterNodeTree, filterProperties } from './aem.filter.js';
 import { ContentFragmentManager } from './aem.content-fragments.js';
 import { ExperienceFragmentManager } from './aem.experience-fragments.js';
 import { LOGGER } from '../utils/logger.js';
@@ -277,7 +278,7 @@ export class AEMConnector {
     }, 'updateComponent');
   }
 
-  async scanPageComponents(pagePath: string): Promise<object> {
+  async scanPageComponents(pagePath: string, verbosity: string = 'standard'): Promise<object> {
     return safeExecute<object>(async () => {
       const url = `${pagePath}.infinity.json`;
       const response = await this.fetch.get(url);
@@ -289,7 +290,7 @@ export class AEMConnector {
           components.push({
             path: nodePath,
             resourceType: node['sling:resourceType'],
-            properties: { ...node },
+            properties: filterProperties({ ...node }, verbosity),
           });
         }
         Object.entries(node).forEach(([key, value]) => {
@@ -306,6 +307,7 @@ export class AEMConnector {
       }
       return createSuccessResponse({
         pagePath,
+        verbosity,
         components,
         totalComponents: components.length,
       }, 'scanPageComponents');
@@ -542,13 +544,15 @@ export class AEMConnector {
     }, 'updateImagePath');
   }
 
-  async getPageContent(pagePath: string): Promise<object> {
+  async getPageContent(pagePath: string, verbosity: string = 'standard'): Promise<object> {
     return safeExecute<object>(async () => {
       const url = `${pagePath}.infinity.json`;
       const data = await this.fetch.get(url);
+      const content = filterNodeTree(data, verbosity);
       return createSuccessResponse({
         pagePath,
-        content: data,
+        verbosity,
+        content,
       }, 'getPageContent');
     }, 'getPageContent');
   }
@@ -2487,13 +2491,15 @@ export class AEMConnector {
   /**
    * Legacy: Get JCR node content as raw JSON for a given path and depth.
    */
-  async getNodeContent(path: string, depth: number = 1): Promise<any> {
+  async getNodeContent(path: string, depth: number = 1, verbosity: string = 'standard'): Promise<any> {
     return safeExecute<any>(async () => {
       const url = `${path}.json`;
-      const content = await this.fetch.get(url, { ':depth': depth.toString() });
+      const rawContent = await this.fetch.get(url, { ':depth': depth.toString() });
+      const content = filterNodeTree(rawContent, verbosity);
       return {
         path,
         depth,
+        verbosity,
         content,
         timestamp: new Date().toISOString()
       };

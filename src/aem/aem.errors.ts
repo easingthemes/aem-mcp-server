@@ -122,6 +122,41 @@ export async function safeExecute<T>(operation: () => Promise<T>, operationName:
   throw lastError;
 }
 
+const ERROR_SUGGESTIONS: Record<string, { suggestion: string; alternatives: string[] }> = {
+  COMPONENT_NOT_FOUND: {
+    suggestion: 'Check the component resourceType spelling. Use getComponents to list all available components.',
+    alternatives: ['scanPageComponents to find components on a specific page', 'searchContent to search by partial name'],
+  },
+  PAGE_NOT_FOUND: {
+    suggestion: 'Verify the page path exists. Use listPages or enhancedPageSearch to find pages.',
+    alternatives: ['listPages to list children of a parent path', 'enhancedPageSearch for fulltext page search'],
+  },
+  RESOURCE_NOT_FOUND: {
+    suggestion: 'The path may not exist or may have a different structure. Use getNodeContent with depth:1 to explore.',
+    alternatives: ['listChildren to see what exists at the parent path'],
+  },
+  AUTHENTICATION_FAILED: {
+    suggestion: 'Check credentials. For Basic Auth: verify username/password. For OAuth: verify client ID/secret and IMS endpoint.',
+    alternatives: [],
+  },
+  INVALID_PATH: {
+    suggestion: 'Paths must start with /content, /content/dam, /conf, or /content/experience-fragments.',
+    alternatives: ['fetchSites to discover valid site roots'],
+  },
+  INVALID_COMPONENT_TYPE: {
+    suggestion: 'The resourceType may be incorrect. Use getComponents to list valid component types.',
+    alternatives: ['scanPageComponents to see what components exist on a page'],
+  },
+  TIMEOUT: {
+    suggestion: 'AEM may be under load or restarting. Retry after a few seconds.',
+    alternatives: [],
+  },
+  CONNECTION_FAILED: {
+    suggestion: 'AEM instance may not be running. Check the configured URL and port.',
+    alternatives: [],
+  },
+};
+
 export function createSuccessResponse<T>(data: T, operation: string) {
   return {
     success: true,
@@ -132,6 +167,7 @@ export function createSuccessResponse<T>(data: T, operation: string) {
 }
 
 export function createErrorResponse(error: AEMOperationError, operation: string) {
+  const hints = ERROR_SUGGESTIONS[error.code] || {};
   return {
     success: false,
     operation,
@@ -141,7 +177,9 @@ export function createErrorResponse(error: AEMOperationError, operation: string)
       message: error.message,
       details: error.details,
       recoverable: error.recoverable,
-      retryAfter: error.retryAfter
+      retryAfter: error.retryAfter,
+      ...(hints.suggestion && { suggestion: hints.suggestion }),
+      ...(hints.alternatives?.length && { alternatives: hints.alternatives }),
     }
   };
 }

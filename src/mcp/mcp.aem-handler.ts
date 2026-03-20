@@ -44,7 +44,7 @@ export class MCPRequestHandler {
         case 'updateComponent':
           return await this.aemConnector.updateComponent(params);
         case 'scanPageComponents':
-          return await this.aemConnector.scanPageComponents(params.pagePath);
+          return await this.aemConnector.scanPageComponents(params.pagePath, params.verbosity);
         case 'fetchSites':
           return await this.aemConnector.fetchSites();
         case 'fetchLanguageMasters':
@@ -60,11 +60,11 @@ export class MCPRequestHandler {
         case 'updateImagePath':
           return await this.aemConnector.updateImagePath(params.componentPath, params.newImagePath);
         case 'getPageContent':
-          return await this.aemConnector.getPageContent(params.pagePath);
+          return await this.aemConnector.getPageContent(params.pagePath, params.verbosity);
         case 'listPages':
           return await this.aemConnector.listPages(params.siteRoot || params.path || '/content', params.depth || 1, params.limit || 20);
         case 'getNodeContent':
-          return await this.aemConnector.getNodeContent(params.path, params.depth || 1);
+          return await this.aemConnector.getNodeContent(params.path, params.depth || 1, params.verbosity);
         case 'listChildren':
           return await this.aemConnector.listChildren(params.path);
         case 'getPageProperties':
