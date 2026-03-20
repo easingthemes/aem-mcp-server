@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.5.0...v1.5.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* use Sling import operation for template child node expansion ([8a5dc12](https://github.com/easingthemes/aem-mcp-server/commit/8a5dc127d08e0a834543021afa3f58f0e348deb3))
+
 # [1.5.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.4.0...v1.5.0) (2026-03-15)
 
 
