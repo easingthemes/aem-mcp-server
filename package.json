@@ -1,6 +1,6 @@
 {
   "name": "aem-mcp-server",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "AEM MCP server. Chat with your AEM instance for content, component, and asset operations.",
   "license": "AGPL-3.0-only",
   "private": false,

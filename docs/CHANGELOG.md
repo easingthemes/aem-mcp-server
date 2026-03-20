@@ -1,3 +1,11 @@
+# [1.6.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.5.1...v1.6.0) (2026-03-20)
+
+
+### Features
+
+* add CCA-F improvements for tool discoverability and response quality ([537dbc1](https://github.com/easingthemes/aem-mcp-server/commit/537dbc113363ce51e0163ceda6bb924a030a65af))
+* **mcp:** add MCP resource support for upfront catalog discovery ([af363b3](https://github.com/easingthemes/aem-mcp-server/commit/af363b355ab930aa559349129bdec8b107576712))
+
 ## [1.5.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.5.0...v1.5.1) (2026-03-20)
 
 
