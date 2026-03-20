@@ -31,8 +31,9 @@ This is an MCP (Model Context Protocol) server that exposes Adobe Experience Man
 **CLI** (`src/cli.ts`) → parses args via yargs, selects transport (HTTP or stdio)
 
 **MCP Layer** (`src/mcp/`) → protocol handling:
-- `mcp.server.ts` — creates MCP `Server`, registers Initialize/ListTools/CallTool handlers
-- `mcp.tools.ts` — 51 tool definitions as Zod schemas (converted to JSON Schema via `zod-to-json-schema`); `injectInstanceParam()` adds an `instance` param when multi-instance is active; exports `toolSchemas` for runtime validation
+- `mcp.server.ts` — creates MCP `Server`, registers Initialize/ListTools/CallTool/ListResources/ReadResource handlers
+- `mcp.tools.ts` — 57 tool definitions as Zod schemas (converted to JSON Schema via `zod-to-json-schema`); `injectInstanceParam()` adds an `instance` param when multi-instance is active; exports `toolSchemas` for runtime validation and `toolAnnotations` for group/readOnly/complexity metadata
+- `mcp.resources.ts` — MCP resource definitions and read handler for 4 resource types (components, sites, templates, workflow-models); URI scheme: `aem://{instance}/{key}`
 - `mcp.aem-handler.ts` — `MCPRequestHandler` validates inputs via Zod then dispatches tool name → `AEMConnector` method via a switch statement
 - `mcp.instances.ts` — `InstanceRegistry` parses `--instances` flag, creates per-instance `MCPRequestHandler`
 - `mcp.stdio.ts` / `mcp.server-handler.ts` — transport-specific setup (stdio vs StreamableHTTPServerTransport)
@@ -44,13 +45,20 @@ This is an MCP (Model Context Protocol) server that exposes Adobe Experience Man
 - `aem.fetch.ts` — `AEMFetch` wraps native fetch with Basic or OAuth auth headers (get/post/put/delete)
 - `aem.auth.ts` — OAuth Server-to-Server token management via Adobe IMS
 - `aem.config.ts` — configuration interfaces
-- `aem.errors.ts` — `AEMOperationError` with typed error codes and HTTP status mapping
+- `aem.filter.ts` — response filtering (`filterProperties`/`filterNodeTree`) with verbosity levels (summary/standard/full); strips JCR internals, truncates long text
+- `aem.errors.ts` — `AEMOperationError` with typed error codes, HTTP status mapping, and `suggestion`/`alternatives` fields for actionable errors
 
 ### Adding a New Tool
 
-1. Add a Zod schema to the appropriate group in `mcp.tools.ts` (use `.passthrough()` on the `z.object()`) and add the description to `toolDescriptions`
+1. Add a Zod schema to the appropriate group in `mcp.tools.ts` (use `.passthrough()` on the `z.object()`) and add the description to `toolDescriptions` and entry to `toolAnnotations`
 2. Add the method implementation — either in `aem.connector.ts` directly, or in a domain manager class (e.g., `aem.content-fragments.ts`) with a delegate method on the connector
 3. Add the case to the switch in `mcp.aem-handler.ts` to wire them together
+
+### Adding a New Resource
+
+1. Add an entry to `RESOURCE_CATALOG` in `mcp.resources.ts` with a `key`, `name`, and `description`
+2. Add a case to the `readResource()` switch to call the appropriate connector method
+3. Add a case to `extractSummary()` to shape the response into summary-only fields
 
 ### Key Patterns
 

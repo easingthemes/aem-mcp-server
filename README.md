@@ -124,16 +124,19 @@ All tools will get an `instance` parameter to target a specific instance.
 
 ## Features
 
-- **AEM Page & Asset Management**: Create, update, delete, activate, deactivate, and replicate pages and assets
+- **57 MCP Tools** covering pages, components, assets, workflows, content fragments, and experience fragments
+- **MCP Resources** — agents discover components, sites, templates, and workflow models upfront via `resources/list`, eliminating discovery roundtrips
+- **Tool Annotations** — every tool tagged with `group`, `readOnly`, and `complexity` so agents can make smarter tool selection decisions
+- **Response Verbosity** — `verbosity` parameter (`summary`/`standard`/`full`) on content-reading tools strips JCR internals and truncates long text
+- **Actionable Errors** — error responses include `suggestion` and `alternatives` fields for self-healing agent workflows
 - **Component Operations**: Update, scan, add, convert, and bulk-manage AEM components (including Experience Fragments)
+- **Content & Experience Fragments**: Full CRUD + variation management for both CF and XF
 - **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
-- **Replication & Rollout**: Publish/unpublish content, roll out changes to language copies
+- **Replication & Workflows**: Publish/unpublish content, start/advance/delegate workflow stages
 - **Text & Image Extraction**: Extract all text and images from pages, including fragments
 - **Template & Structure Discovery**: List templates, analyze page/component structure
-- **Workflow and Inbox Operations**: List, start, advance, suspend, and delegate workflow stages
-- **JCR Node Access**: Legacy and modern node/content access
-- **AI/LLM Integration**: Natural language interface for AEM via any MCP-compatible client
-- **Security**: Auth, environment-based config, and safe operation defaults
+- **Multi-instance**: Connect to multiple AEM instances simultaneously; tools and resources are instance-aware
+- **Security**: Basic auth and OAuth S2S, environment-based config, safe operation defaults
 
 ---
 
@@ -144,6 +147,19 @@ Once configured in your AI IDE, just ask in natural language:
 ```
 List all components on MyPage
 ```
+
+## MCP Resources
+
+The server exposes read-only MCP resources so agents can discover AEM catalogs without tool calls:
+
+| Resource URI | Description |
+|---|---|
+| `aem://{instance}/components` | All components (name, resourceType, title, group) |
+| `aem://{instance}/sites` | Site roots and language structure under /content |
+| `aem://{instance}/templates` | Available page templates (path, title) |
+| `aem://{instance}/workflow-models` | Workflow models (ID, title, description) |
+
+Resources return summary data only. In multi-instance mode, each instance gets its own set of resource URIs.
 
 ## API Documentation
 
