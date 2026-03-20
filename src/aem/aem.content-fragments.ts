@@ -1,6 +1,5 @@
 import { AEMFetch } from './aem.fetch.js';
 import { createSuccessResponse, safeExecute, createAEMError, AEM_ERROR_CODES } from './aem.errors.js';
-import { LOGGER } from '../utils/logger.js';
 
 export class ContentFragmentManager {
   private readonly fetch: AEMFetch;

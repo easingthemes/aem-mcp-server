@@ -7,6 +7,10 @@ type ToolDefinition = {
   inputSchema: object;
 };
 
+// ─── Shared Fields ────────────────────────────────────
+const verbosityField = z.enum(['summary', 'standard', 'full']).default('standard').optional()
+  .describe('Response detail level: summary (paths/names only), standard (default, minus JCR internals), full (everything)');
+
 // ─── Content & Text ───────────────────────────────────
 const contentSchemas = {
   getAllTextContent: z.object({
@@ -24,13 +28,16 @@ const contentSchemas = {
   }).passthrough(),
   getPageContent: z.object({
     pagePath: z.string().describe('Path to the page'),
+    verbosity: verbosityField,
   }).passthrough(),
   getNodeContent: z.object({
     path: z.string().describe('JCR node path'),
     depth: z.number().optional().describe('Depth to traverse'),
+    verbosity: verbosityField,
   }).passthrough(),
   listChildren: z.object({
     path: z.string().describe('Parent node path'),
+    verbosity: verbosityField,
   }).passthrough(),
   getPageProperties: z.object({
     pagePath: z.string().describe('Path to the page'),
@@ -54,6 +61,7 @@ const pageSchemas = {
     siteRoot: z.string().optional().describe('Site root path'),
     depth: z.number().optional().describe('Depth to traverse'),
     limit: z.number().optional().describe('Maximum number of results'),
+    verbosity: verbosityField,
   }).passthrough(),
   createPage: z.object({
     parentPath: z.string().describe('Parent path'),
@@ -89,6 +97,7 @@ const componentSchemas = {
   }).passthrough(),
   scanPageComponents: z.object({
     pagePath: z.string().describe('Path to the page to scan'),
+    verbosity: verbosityField,
   }).passthrough(),
   createComponent: z.object({
     pagePath: z.string().describe('Path to the page'),
@@ -110,6 +119,7 @@ const componentSchemas = {
   }).passthrough(),
   getComponents: z.object({
     path: z.string().optional().describe('Optional: Component root path to fetch components from. If not provided, uses the configured default path.'),
+    verbosity: verbosityField,
   }).passthrough(),
   bulkUpdateComponents: z.object({
     updates: z.array(z.object({
@@ -300,29 +310,29 @@ export type ToolName = keyof typeof toolSchemas;
 export const toolDescriptions: Record<ToolName, string> = {
   updateComponent: 'Update component properties in AEM',
   scanPageComponents: 'Scan a page to discover all components and their properties',
-  fetchSites: 'Get all available sites in AEM',
+  fetchSites: 'Get all top-level AEM site roots under /content. Returns site name, path, and language root structure.',
   fetchLanguageMasters: 'Get language masters for a specific site',
   fetchAvailableLocales: 'Get available locales for a site',
   getAllTextContent: 'Get all text content from a page including titles, text components, and descriptions',
   getPageTextContent: 'Get text content from a specific page',
   getPageImages: 'Get all images from a page, including those within Experience Fragments',
   updateImagePath: 'Update the image path for an image component and verify the update',
-  getPageContent: 'Get all content from a page including Experience Fragments and Content Fragments',
-  listPages: 'List all pages under a site root',
-  getNodeContent: 'Legacy: Get JCR node content',
+  getPageContent: 'Get complete page content including resolved Experience Fragments and Content Fragments. Returns full content tree. For text-only extraction, use getPageTextContent. For raw JCR nodes, use getNodeContent.',
+  listPages: 'List child pages directly under a path (non-recursive, structural). For finding pages by content or name, use enhancedPageSearch instead.',
+  getNodeContent: 'Get raw JCR node properties at a specific path and depth. Low-level tool — use getPageContent for pages or scanPageComponents for component discovery.',
   listChildren: 'Legacy: List child nodes',
   getPageProperties: 'Get page properties',
-  searchContent: 'Search content using Query Builder',
-  executeJCRQuery: 'Execute JCR query',
-  getAssetMetadata: 'Get asset metadata',
+  searchContent: 'Structured content search with filters (type, property values, path scope, fulltext). More flexible than executeJCRQuery. Use for finding nodes by property values or content type.',
+  executeJCRQuery: 'Execute fulltext search on cq:Page nodes under /content. Uses QueryBuilder internally, NOT raw JCR-SQL2. For structured property-based queries, use searchContent instead.',
+  getAssetMetadata: 'Get DAM asset metadata including title, description, dimensions, format, tags, and custom properties. Path must be under /content/dam.',
   enhancedPageSearch: 'Intelligent page search with comprehensive fallback strategies and cross-section search',
   createPage: 'Create a new page in AEM. The resourceType will be automatically extracted from the template structure if not provided.',
   deletePage: 'Delete a page from AEM',
-  createComponent: 'Create a new component on a page',
-  addComponent: 'Add a component to an existing page. Automatically finds the appropriate container (root/container) and adds the component there.',
+  createComponent: 'Create a component at a specific JCR path (you must know the exact container path). For automatic container detection and cq:template application, use addComponent instead.',
+  addComponent: 'Add a component to a page with automatic parsys/container detection and cq:template application. Preferred over createComponent for most use cases.',
   deleteComponent: 'Delete a component from AEM',
   unpublishContent: 'Unpublish content from the publish environment',
-  activatePage: 'Activate (publish) a single page',
+  activatePage: 'Publish a page immediately via direct replication (synchronous). For approval-based publishing workflows, use startWorkflow with the request_for_activation model.',
   deactivatePage: 'Deactivate (unpublish) a single page',
   updateAsset: 'Update an existing asset in AEM DAM',
   deleteAsset: 'Delete an asset from AEM DAM',
@@ -395,3 +405,67 @@ export function injectInstanceParam(
     };
   });
 }
+
+export const toolAnnotations: Record<string, { group: string; readOnly: boolean; complexity: 'low' | 'medium' | 'high' }> = {
+  // Content & Text
+  getAllTextContent: { group: 'content', readOnly: true, complexity: 'low' },
+  getPageTextContent: { group: 'content', readOnly: true, complexity: 'low' },
+  getPageImages: { group: 'content', readOnly: true, complexity: 'low' },
+  updateImagePath: { group: 'content', readOnly: false, complexity: 'medium' },
+  getPageContent: { group: 'content', readOnly: true, complexity: 'low' },
+  getPageProperties: { group: 'content', readOnly: true, complexity: 'low' },
+  // Sites
+  fetchSites: { group: 'sites', readOnly: true, complexity: 'low' },
+  fetchLanguageMasters: { group: 'sites', readOnly: true, complexity: 'low' },
+  fetchAvailableLocales: { group: 'sites', readOnly: true, complexity: 'low' },
+  // Pages
+  listPages: { group: 'pages', readOnly: true, complexity: 'low' },
+  createPage: { group: 'pages', readOnly: false, complexity: 'medium' },
+  deletePage: { group: 'pages', readOnly: false, complexity: 'high' },
+  activatePage: { group: 'pages', readOnly: false, complexity: 'medium' },
+  deactivatePage: { group: 'pages', readOnly: false, complexity: 'medium' },
+  unpublishContent: { group: 'pages', readOnly: false, complexity: 'medium' },
+  enhancedPageSearch: { group: 'search', readOnly: true, complexity: 'low' },
+  getNodeContent: { group: 'content', readOnly: true, complexity: 'low' },
+  listChildren: { group: 'content', readOnly: true, complexity: 'low' },
+  // Components
+  updateComponent: { group: 'components', readOnly: false, complexity: 'medium' },
+  scanPageComponents: { group: 'components', readOnly: true, complexity: 'low' },
+  createComponent: { group: 'components', readOnly: false, complexity: 'high' },
+  addComponent: { group: 'components', readOnly: false, complexity: 'medium' },
+  deleteComponent: { group: 'components', readOnly: false, complexity: 'high' },
+  getComponents: { group: 'components', readOnly: true, complexity: 'low' },
+  bulkUpdateComponents: { group: 'components', readOnly: false, complexity: 'high' },
+  convertComponents: { group: 'components', readOnly: false, complexity: 'high' },
+  bulkConvertComponents: { group: 'components', readOnly: false, complexity: 'high' },
+  // Assets
+  getAssetMetadata: { group: 'assets', readOnly: true, complexity: 'low' },
+  updateAsset: { group: 'assets', readOnly: false, complexity: 'medium' },
+  deleteAsset: { group: 'assets', readOnly: false, complexity: 'high' },
+  // Search
+  searchContent: { group: 'search', readOnly: true, complexity: 'low' },
+  executeJCRQuery: { group: 'search', readOnly: true, complexity: 'medium' },
+  // Templates
+  getTemplates: { group: 'templates', readOnly: true, complexity: 'low' },
+  getTemplateStructure: { group: 'templates', readOnly: true, complexity: 'low' },
+  // Workflows
+  listWorkflowModels: { group: 'workflows', readOnly: true, complexity: 'low' },
+  startWorkflow: { group: 'workflows', readOnly: false, complexity: 'medium' },
+  listWorkflowInstances: { group: 'workflows', readOnly: true, complexity: 'low' },
+  getWorkflowInstance: { group: 'workflows', readOnly: true, complexity: 'low' },
+  updateWorkflowInstanceState: { group: 'workflows', readOnly: false, complexity: 'medium' },
+  getInboxItems: { group: 'workflows', readOnly: true, complexity: 'low' },
+  completeWorkItem: { group: 'workflows', readOnly: false, complexity: 'medium' },
+  delegateWorkItem: { group: 'workflows', readOnly: false, complexity: 'medium' },
+  getWorkItemRoutes: { group: 'workflows', readOnly: true, complexity: 'low' },
+  // Content Fragments
+  getContentFragment: { group: 'fragments-content', readOnly: true, complexity: 'low' },
+  listContentFragments: { group: 'fragments-content', readOnly: true, complexity: 'low' },
+  manageContentFragment: { group: 'fragments-content', readOnly: false, complexity: 'medium' },
+  manageContentFragmentVariation: { group: 'fragments-content', readOnly: false, complexity: 'medium' },
+  // Experience Fragments
+  getExperienceFragment: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
+  listExperienceFragments: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
+  manageExperienceFragment: { group: 'fragments-experience', readOnly: false, complexity: 'medium' },
+  manageExperienceFragmentVariation: { group: 'fragments-experience', readOnly: false, complexity: 'medium' },
+};

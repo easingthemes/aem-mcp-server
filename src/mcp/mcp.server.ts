@@ -1,6 +1,6 @@
 import { CallToolRequestSchema, ListToolsRequestSchema, InitializeRequestSchema, LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { tools, injectInstanceParam } from './mcp.tools.js';
+import { tools, injectInstanceParam, toolAnnotations } from './mcp.tools.js';
 import { InstanceRegistry } from './mcp.instances.js';
 import { CliParams } from '../types.js';
 import { LOGGER } from '../utils/logger.js';
@@ -45,7 +45,12 @@ export const createMCPServer = (cliParams: CliParams) => {
       ? injectInstanceParam(tools, instanceNames, registry.getDefaultName())
       : tools;
     LOGGER.log('2. Received ListToolsRequest', exportedTools);
-    return { tools: exportedTools };
+    return {
+      tools: exportedTools.map(tool => ({
+        ...tool,
+        ...(toolAnnotations[tool.name] && { annotations: toolAnnotations[tool.name] }),
+      })),
+    };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
