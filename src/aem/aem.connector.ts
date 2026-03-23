@@ -838,14 +838,19 @@ export class AEMConnector {
       }
       const componentName = name || `${componentType}_${Date.now()}`;
       const componentNodePath = componentPath || `${pagePath}/jcr:content/${componentName}`;
-      await this.fetch.post(componentNodePath, {
+      // Use Sling import with :content parameter — the JSON node data must be
+      // passed as the :content form field, not as the raw JSON body. When mixed
+      // into the JSON body, Sling strips sling:resourceType and other properties.
+      const importData = new URLSearchParams();
+      importData.append(':operation', 'import');
+      importData.append(':contentType', 'json');
+      importData.append(':replace', 'true');
+      importData.append(':content', JSON.stringify({
         'jcr:primaryType': 'nt:unstructured',
         'sling:resourceType': resourceType,
         ...properties,
-        ':operation': 'import',
-        ':contentType': 'json',
-        ':replace': 'true',
-      });
+      }));
+      await this.fetch.post(componentNodePath, importData);
       return createSuccessResponse({
         success: true,
         componentPath: componentNodePath,
@@ -1200,15 +1205,16 @@ export class AEMConnector {
           nodeData['jcr:primaryType'] = 'nt:unstructured';
         }
 
-        // Use Sling import operation — this natively handles the full node
-        // tree at any depth, creating real JCR child nodes instead of
-        // stringifying nested objects as property values.
-        await this.fetch.post(childPath, {
-          ...nodeData,
-          ':operation': 'import',
-          ':contentType': 'json',
-          ':replace': 'true',
-        });
+        // Use Sling import with :content parameter. The JSON node data must
+        // be passed as the :content form field, NOT mixed into the JSON body.
+        // When control params (:operation, :contentType) are in the JSON body,
+        // Sling strips sling:resourceType and other properties from child nodes.
+        const importData = new URLSearchParams();
+        importData.append(':operation', 'import');
+        importData.append(':contentType', 'json');
+        importData.append(':replace', 'true');
+        importData.append(':content', JSON.stringify(nodeData));
+        await this.fetch.post(childPath, importData);
         LOGGER.log(`Created template child node: ${childPath}`);
       } catch (error: any) {
         LOGGER.warn(`Failed to create template child node ${childName}: ${error.message}`);
