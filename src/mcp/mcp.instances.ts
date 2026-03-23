@@ -48,9 +48,15 @@ export class InstanceRegistry {
 
         if (parts[1]?.startsWith('//') || parts[2]?.startsWith('//')) {
           name = parts[0];
+          // Reconstruct protocol://host, then check if next part is a numeric port
           host = parts[1] + ':' + parts[2];
-          user = parts[3];
-          pass = parts.slice(4).join(':');
+          let nextIdx = 3;
+          if (parts[nextIdx] && /^\d+$/.test(parts[nextIdx])) {
+            host += ':' + parts[nextIdx];
+            nextIdx++;
+          }
+          user = parts[nextIdx] || 'admin';
+          pass = parts.slice(nextIdx + 1).join(':') || 'admin';
         } else {
           name = parts[0];
           host = parts[1];
