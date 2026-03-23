@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.6.0...v1.6.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* **instances:** include port in host when parsing URL-style instance strings ([ccaf9ae](https://github.com/easingthemes/aem-mcp-server/commit/ccaf9ae1090a010972e2e2ca01b0db910500557f))
+
 # [1.6.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.5.1...v1.6.0) (2026-03-20)
 
 
