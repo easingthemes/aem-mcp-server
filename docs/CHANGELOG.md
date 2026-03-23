@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/easingthemes/aem-mcp-server/compare/v1.6.1...v1.6.2) (2026-03-23)
+
+
+### Bug Fixes
+
+* use :content form field for Sling import to preserve sling:resourceType ([c3e4610](https://github.com/easingthemes/aem-mcp-server/commit/c3e46104d4438e9b99fe6c5e0e5a72a9e3ed0604))
+
 ## [1.6.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.6.0...v1.6.1) (2026-03-23)
 
 
