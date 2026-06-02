@@ -830,6 +830,43 @@ export class AEMConnector {
     }, 'deletePage');
   }
 
+  async copyPage(request: any): Promise<object> {
+    return safeExecute<object>(async () => {
+      const { srcPath, destParentPath, before, shallow = false } = request;
+      if (!isValidContentPath(srcPath, this.aemConfig)) {
+        throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid source path: ${String(srcPath)}`, { srcPath });
+      }
+      if (!isValidContentPath(destParentPath, this.aemConfig)) {
+        throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid destination parent path: ${String(destParentPath)}`, { destParentPath });
+      }
+      // Default the copy's node name to the source page name when not provided.
+      const destName = request.destName || srcPath.split('/').filter(Boolean).pop();
+      const destPath = `${destParentPath.replace(/\/$/, '')}/${destName}`;
+
+      // Mirror the AEM author Copy/Paste action via the wcmcommand servlet.
+      const formData = new URLSearchParams();
+      formData.append('cmd', 'copyPage');
+      formData.append('srcPath', srcPath);
+      formData.append('destParentPath', destParentPath);
+      formData.append('destName', destName);
+      formData.append('shallow', shallow ? 'true' : 'false');
+      if (before) {
+        formData.append('before', before);
+      }
+      await this.fetch.post('/bin/wcmcommand', formData);
+
+      return createSuccessResponse({
+        success: true,
+        srcPath,
+        destPath,
+        destParentPath,
+        destName,
+        shallow,
+        timestamp: new Date().toISOString(),
+      }, 'copyPage');
+    }, 'copyPage');
+  }
+
   async createComponent(request: any): Promise<object> {
     return safeExecute<object>(async () => {
       const { pagePath, componentPath, componentType, resourceType, properties = {}, name } = request;
