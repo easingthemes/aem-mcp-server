@@ -87,6 +87,13 @@ const pageSchemas = {
     contentPaths: z.array(z.string()).describe('Paths to unpublish'),
     unpublishTree: z.boolean().optional().describe('Unpublish tree'),
   }).passthrough(),
+  copyPage: z.object({
+    srcPath: z.string().describe('Path of the source page to copy'),
+    destParentPath: z.string().describe('Path of the parent under which the copy is created'),
+    destName: z.string().optional().describe('Node name for the copied page (defaults to the source page name)'),
+    before: z.string().optional().describe('Name of an existing sibling to position the copy before (ordering)'),
+    shallow: z.boolean().optional().describe('Copy only the page itself, without its child pages (default false)'),
+  }).passthrough(),
 };
 
 // ─── Components ───────────────────────────────────────
@@ -328,6 +335,7 @@ export const toolDescriptions: Record<ToolName, string> = {
   enhancedPageSearch: 'Intelligent page search with comprehensive fallback strategies and cross-section search',
   createPage: 'Create a new page in AEM. The resourceType will be automatically extracted from the template structure if not provided.',
   deletePage: 'Delete a page from AEM',
+  copyPage: 'Copy a page (and by default its child pages) to a new location. Mirrors the AEM author "Copy/Paste" action via the wcmcommand servlet. Use destName to rename the copy and shallow=true to copy only the page itself.',
   createComponent: 'Create a component at a specific JCR path (you must know the exact container path). For automatic container detection and cq:template application, use addComponent instead.',
   addComponent: 'Add a component to a page with automatic parsys/container detection and cq:template application. Preferred over createComponent for most use cases.',
   deleteComponent: 'Delete a component from AEM',
@@ -422,6 +430,7 @@ export const toolAnnotations: Record<string, { group: string; readOnly: boolean;
   listPages: { group: 'pages', readOnly: true, complexity: 'low' },
   createPage: { group: 'pages', readOnly: false, complexity: 'medium' },
   deletePage: { group: 'pages', readOnly: false, complexity: 'high' },
+  copyPage: { group: 'pages', readOnly: false, complexity: 'medium' },
   activatePage: { group: 'pages', readOnly: false, complexity: 'medium' },
   deactivatePage: { group: 'pages', readOnly: false, complexity: 'medium' },
   unpublishContent: { group: 'pages', readOnly: false, complexity: 'medium' },

@@ -86,6 +86,8 @@ export class MCPRequestHandler {
           return await this.aemConnector.createPage(params);
         case 'deletePage':
           return await this.aemConnector.deletePage(params);
+        case 'copyPage':
+          return await this.aemConnector.copyPage(params);
         case 'createComponent':
           return await this.aemConnector.createComponent(params);
         case 'addComponent':
