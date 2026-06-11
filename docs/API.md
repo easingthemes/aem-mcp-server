@@ -168,7 +168,7 @@ completeWorkItem({
 |--------|-------------|------------|
 | `getContentFragment` | Get a content fragment with all fields, variations, and metadata | `path` |
 | `listContentFragments` | List content fragments under a path with optional model filter | `path`, `model`, `limit`, `offset` |
-| `manageContentFragment` | Create, update, or delete a content fragment | `action`, `fragmentPath`, `parentPath`, `title`, `name`, `model`, `fields`, `description`, `force` |
+| `manageContentFragment` | Create, update, or delete a content fragment, or merge keys into a JSON-encoded-string field (`action: mergeJsonField`) | `action`, `fragmentPath`, `parentPath`, `title`, `name`, `model`, `fields`, `description`, `force`, `variation`, `field`, `jsonPointer`, `merge` |
 | `manageContentFragmentVariation` | Create, update, or delete a variation within a content fragment | `action`, `fragmentPath`, `variationName`, `title`, `fields` |
 
 ## Experience Fragments
