@@ -1,5 +1,6 @@
 import { AEMFetch } from './aem.fetch.js';
 import { createSuccessResponse, safeExecute, createAEMError, AEM_ERROR_CODES } from './aem.errors.js';
+import { mergeJsonString, JsonMergeError } from './aem.json-merge.js';
 
 export class ContentFragmentManager {
   private readonly fetch: AEMFetch;
@@ -170,6 +171,10 @@ export class ContentFragmentManager {
     fields?: Record<string, any>;
     description?: string;
     force?: boolean;
+    variation?: string;
+    field?: string;
+    jsonPointer?: string;
+    merge?: Record<string, unknown>;
   }): Promise<object> {
     const { action } = params;
     switch (action) {
@@ -179,8 +184,10 @@ export class ContentFragmentManager {
         return this.updateContentFragment(params);
       case 'delete':
         return this.deleteContentFragment(params);
+      case 'mergeJsonField':
+        return this.mergeJsonField(params);
       default:
-        throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid action: ${action}. Must be "create", "update", or "delete".`);
+        throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid action: ${action}. Must be "create", "update", "delete", or "mergeJsonField".`);
     }
   }
 
@@ -220,34 +227,110 @@ export class ContentFragmentManager {
   }
 
   private async updateContentFragment(params: any): Promise<object> {
-    const { fragmentPath, fields, description, title } = params;
+    const { fragmentPath, fields, description, title, variation = 'master' } = params;
     if (!fragmentPath) {
       throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'update requires fragmentPath');
     }
 
     return safeExecute<object>(async () => {
-      if (this.isAEMaaCS) {
-        const body: any = {};
-        if (title) body.title = title;
-        if (description) body.description = description;
-        if (fields) {
-          body.fields = Object.entries(fields).map(([k, v]) => ({ name: k, value: v }));
-        }
-        await this.fetch.put(`/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}`, body);
-        return createSuccessResponse({ action: 'update', path: fragmentPath }, 'manageContentFragment');
-      } else {
-        const formData = new URLSearchParams();
-        if (title) formData.append('./jcr:content/jcr:title', title);
-        if (description) formData.append('./jcr:content/data/description', description);
-        if (fields) {
-          for (const [key, value] of Object.entries(fields)) {
-            formData.append(`./jcr:content/data/master/${key}`, String(value));
-          }
-        }
-        await this.fetch.post(fragmentPath, formData);
-        return createSuccessResponse({ action: 'update', path: fragmentPath }, 'manageContentFragment');
-      }
+      await this.writeFields(fragmentPath, variation, fields || {}, { title, description });
+      return createSuccessResponse({ action: 'update', path: fragmentPath, variation }, 'manageContentFragment');
     }, 'updateContentFragment');
+  }
+
+  /**
+   * Read the raw value of a single field from a variation's data node. Works on
+   * both AEM 6.5 and AEMaaCS since it reads the underlying JCR resource directly.
+   */
+  private async readFieldValue(fragmentPath: string, variation: string, field: string): Promise<string> {
+    const node = await this.fetch.get(`${fragmentPath}/jcr:content/data/${variation}.json`);
+    const value = node?.[field];
+    if (value === undefined || value === null) {
+      throw createAEMError(
+        AEM_ERROR_CODES.RESOURCE_NOT_FOUND,
+        `Field "${field}" not found at ${fragmentPath} (variation "${variation}").`,
+      );
+    }
+    return String(value);
+  }
+
+  /**
+   * Write one or more field values to a CF variation, branching on deployment
+   * type. Shared by updateContentFragment and mergeJsonField so the AEMaaCS
+   * (CF API) vs. AEM 6.5 (Sling POST) routing lives in one place.
+   */
+  private async writeFields(
+    fragmentPath: string,
+    variation: string,
+    fields: Record<string, any>,
+    opts: { title?: string; description?: string } = {},
+  ): Promise<void> {
+    const { title, description } = opts;
+    if (this.isAEMaaCS) {
+      const body: any = {};
+      if (title) body.title = title;
+      const fieldEntries = Object.entries(fields);
+      if (fieldEntries.length) {
+        body.fields = fieldEntries.map(([k, v]) => ({ name: k, value: v }));
+      }
+      if (variation && variation !== 'master') {
+        await this.fetch.put(`/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}/variations/${variation}`, body);
+      } else {
+        if (description) body.description = description;
+        await this.fetch.put(`/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}`, body);
+      }
+    } else {
+      const formData = new URLSearchParams();
+      if (title) formData.append('./jcr:content/jcr:title', title);
+      if (description) formData.append('./jcr:content/data/description', description);
+      for (const [key, value] of Object.entries(fields)) {
+        formData.append(`./jcr:content/data/${variation}/${key}`, String(value));
+      }
+      await this.fetch.post(fragmentPath, formData);
+    }
+  }
+
+  /**
+   * Patch a JSON-encoded-string field: read the current blob, deep-merge the
+   * given keys at an RFC-6901 pointer, and write the result back — entirely
+   * server-side, so the full blob never round-trips through the caller.
+   */
+  private async mergeJsonField(params: any): Promise<object> {
+    const { fragmentPath, field, jsonPointer = '', merge, variation = 'master' } = params;
+    if (!fragmentPath || !field) {
+      throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'mergeJsonField requires fragmentPath and field');
+    }
+    if (!merge || typeof merge !== 'object' || Array.isArray(merge) || Object.keys(merge).length === 0) {
+      throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'mergeJsonField requires a non-empty "merge" object of keys to upsert');
+    }
+
+    return safeExecute<object>(async () => {
+      const current = await this.readFieldValue(fragmentPath, variation, field);
+
+      let merged;
+      try {
+        merged = mergeJsonString(current, jsonPointer, merge);
+      } catch (err) {
+        if (err instanceof JsonMergeError) {
+          throw createAEMError(AEM_ERROR_CODES[err.code], err.message);
+        }
+        throw err;
+      }
+
+      await this.writeFields(fragmentPath, variation, { [field]: merged.result });
+
+      return createSuccessResponse({
+        action: 'mergeJsonField',
+        path: fragmentPath,
+        variation,
+        field,
+        jsonPointer: jsonPointer || '(root)',
+        added: merged.added,
+        overwritten: merged.overwritten,
+        beforeKeyCount: merged.beforeKeyCount,
+        afterKeyCount: merged.afterKeyCount,
+      }, 'manageContentFragment');
+    }, 'mergeJsonField');
   }
 
   private async deleteContentFragment(params: any): Promise<object> {
