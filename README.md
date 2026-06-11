@@ -130,7 +130,7 @@ All tools will get an `instance` parameter to target a specific instance.
 - **Response Verbosity** — `verbosity` parameter (`summary`/`standard`/`full`) on content-reading tools strips JCR internals and truncates long text
 - **Actionable Errors** — error responses include `suggestion` and `alternatives` fields for self-healing agent workflows
 - **Component Operations**: Update, scan, add, convert, and bulk-manage AEM components (including Experience Fragments)
-- **Content & Experience Fragments**: Full CRUD + variation management for both CF and XF
+- **Content & Experience Fragments**: Full CRUD + variation management for both CF and XF, plus server-side JSON-string field merging (`manageContentFragment` action `mergeJsonField`) for CFs that store a whole key→value map inside one JSON-encoded field
 - **Advanced Search**: QueryBuilder, fulltext, fuzzy, and enhanced page search
 - **Replication & Workflows**: Publish/unpublish content, start/advance/delegate workflow stages
 - **Text & Image Extraction**: Extract all text and images from pages, including fragments
@@ -147,6 +147,26 @@ Once configured in your AI IDE, just ask in natural language:
 ```
 List all components on MyPage
 ```
+
+### Merging into a JSON-string field
+
+Some Content Fragments store an entire key→value map inside a single field as a JSON-encoded
+string. To upsert a few keys without round-tripping the whole blob, use the `mergeJsonField`
+action — the read-merge-write happens server-side:
+
+```jsonc
+{
+  "action": "mergeJsonField",
+  "fragmentPath": "/content/dam/<site>/.../labels",
+  "field": "CFMValue",                 // the field holding the JSON string
+  "jsonPointer": "/0/content/0/value", // RFC-6901 pointer to the object to merge into ("" = field root)
+  "merge": { "search": "Search", "clear_search": "Clear search" },
+  "variation": "master"                // default: master
+}
+```
+
+New keys are added, existing keys overwritten (deep-merge), and untouched keys preserved. The
+response reports the keys added/overwritten and the before/after key count at the pointer.
 
 ## MCP Resources
 
