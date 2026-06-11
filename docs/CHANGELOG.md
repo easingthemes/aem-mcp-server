@@ -1,3 +1,15 @@
+# [1.7.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.6.2...v1.7.0) (2026-06-11)
+
+
+### Bug Fixes
+
+* Trigger Manual Release ([acf98a1](https://github.com/easingthemes/aem-mcp-server/commit/acf98a1761f69b06c50b9f0618f621e3377831cb))
+
+
+### Features
+
+* **content-fragments:** add mergeJsonField action for JSON-string fields ([dac7c14](https://github.com/easingthemes/aem-mcp-server/commit/dac7c14d4aa110ca28ea882a49f38ae38607a4dd))
+
 ## [1.6.2](https://github.com/easingthemes/aem-mcp-server/compare/v1.6.1...v1.6.2) (2026-03-23)
 
 
