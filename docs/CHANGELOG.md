@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.7.0...v1.7.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* Trigger Manual Release ([9111f25](https://github.com/easingthemes/aem-mcp-server/commit/9111f2578cbbca4e07ad5d9b17b8a643cce71843))
+
 # [1.7.0](https://github.com/easingthemes/aem-mcp-server/compare/v1.6.2...v1.7.0) (2026-06-11)
 
 
