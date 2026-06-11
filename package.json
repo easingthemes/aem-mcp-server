@@ -34,7 +34,7 @@
     "build": "npm run build:types && npm run build:ts",
     "build:ts": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --minify",
     "build:types": "tsc --emitDeclarationOnly",
-    "test": "node --test test/*.test.ts",
+    "test": "npm run build:ts && node --test test/*.test.js",
     "start": "MCP_LOGGER=true node dist/cli.js",
     "test:dev": "node ./dist/cli.js",
     "test:npm": "npm pack && npm install -g ./aem-mcp-server-$npm_package_version.tgz && aem-mcp -e -H=http://localhost:5502"

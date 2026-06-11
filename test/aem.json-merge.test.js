@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+// Imports the compiled output so the suite runs on plain Node (no TS loader).
+// `npm test` builds first; CI builds before the test step.
 import {
   resolveJsonPointer,
   mergeJsonString,
   JsonMergeError,
-} from '../src/aem/aem.json-merge.ts';
+} from '../dist/aem/aem.json-merge.js';
 
 // A generic nested shape: [{ component, content: [{ value: {...} }] }]
 const nested = () => [
@@ -33,7 +35,7 @@ test('resolveJsonPointer: throws JsonMergeError when a token is missing', () => 
   const root = nested();
   assert.throws(
     () => resolveJsonPointer(root, '/0/content/9/value'),
-    (err: unknown) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
+    (err) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
   );
 });
 
@@ -71,7 +73,7 @@ test('mergeJsonString: pointer to root object merges at top level', () => {
 test('mergeJsonString: invalid JSON throws VALIDATION_FAILED', () => {
   assert.throws(
     () => mergeJsonString('not json {', '', { a: 1 }),
-    (err: unknown) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
+    (err) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
   );
 });
 
@@ -79,7 +81,7 @@ test('mergeJsonString: pointer resolving to a non-object throws VALIDATION_FAILE
   const current = JSON.stringify({ a: 'scalar' });
   assert.throws(
     () => mergeJsonString(current, '/a', { x: 1 }),
-    (err: unknown) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
+    (err) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
   );
 });
 
@@ -87,6 +89,6 @@ test('mergeJsonString: pointer resolving to an array throws VALIDATION_FAILED', 
   const current = JSON.stringify({ list: [1, 2] });
   assert.throws(
     () => mergeJsonString(current, '/list', { x: 1 }),
-    (err: unknown) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
+    (err) => err instanceof JsonMergeError && err.code === 'VALIDATION_FAILED'
   );
 });
