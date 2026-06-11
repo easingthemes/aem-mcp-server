@@ -1,6 +1,6 @@
 {
   "name": "aem-mcp-server",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "AEM MCP server. Chat with your AEM instance for content, component, and asset operations.",
   "license": "AGPL-3.0-only",
   "private": false,
@@ -34,6 +34,7 @@
     "build": "npm run build:types && npm run build:ts",
     "build:ts": "esbuild src/**/*.ts src/*.ts --outdir=dist --platform=node --minify",
     "build:types": "tsc --emitDeclarationOnly",
+    "test": "npm run build:ts && node --test test/*.test.js",
     "start": "MCP_LOGGER=true node dist/cli.js",
     "test:dev": "node ./dist/cli.js",
     "test:npm": "npm pack && npm install -g ./aem-mcp-server-$npm_package_version.tgz && aem-mcp -e -H=http://localhost:5502"
