@@ -808,8 +808,8 @@ export class AEMConnector {
         try {
           await this.fetch.get(`${pagePath}.json`);
           exists = true;
-        } catch {
-          exists = false;
+        } catch (err: any) {
+          if (err?.status !== 404 && err?.response?.status !== 404) throw err;
         }
         return createSuccessResponse({
           dryRun: true,
@@ -1685,8 +1685,8 @@ export class AEMConnector {
         try {
           await this.fetch.get(`${componentPath}.json`);
           exists = true;
-        } catch {
-          exists = false;
+        } catch (err: any) {
+          if (err?.status !== 404 && err?.response?.status !== 404) throw err;
         }
         return createSuccessResponse({
           dryRun: true,
@@ -1908,8 +1908,8 @@ export class AEMConnector {
         try {
           await this.fetch.get(`${assetPath}.json`);
           exists = true;
-        } catch {
-          exists = false;
+        } catch (err: any) {
+          if (err?.status !== 404 && err?.response?.status !== 404) throw err;
         }
         return createSuccessResponse({
           dryRun: true,

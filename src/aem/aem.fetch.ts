@@ -393,6 +393,13 @@ export class AEMFetch {
       if (response.status === 401) {
         await this.refreshAuthToken();
         const retryResponse = await this.fetch(fullUrl, { ...options, redirect: 'follow' });
+        if (!retryResponse.ok) {
+          const errorText = await retryResponse.text().catch(() => '');
+          const error: any = new Error(`AEM GET failed: ${retryResponse.status} - ${errorText}`);
+          error.status = retryResponse.status;
+          error.response = { status: retryResponse.status, data: errorText || null };
+          throw error;
+        }
         const text = await retryResponse.text();
         const data = text ? JSON.parse(text) : {};
         return { data, etag: retryResponse.headers.get('ETag') };

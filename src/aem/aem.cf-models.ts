@@ -385,7 +385,7 @@ export class ContentFragmentModelManager {
     }
 
     return safeExecute<object>(async () => {
-      if (!force) {
+      if (!force && !this.isAEMaaCS) {
         const checkParams: Record<string, any> = {
           type: 'dam:Asset',
           'property': 'jcr:content/data/cq:model',
@@ -479,7 +479,14 @@ export class ContentFragmentModelManager {
               name: targetName,
               title: (schema.data?.title || targetName) + ' (copy)',
               description: schema.data?.description || '',
-              fields: schema.data?.fields || [],
+              fields: (schema.data?.fields || []).map((f: any) => ({
+                name: f.name,
+                type: f.type,
+                label: f.label,
+                required: f.required,
+                multiValue: f.multiValue,
+                ...(f.constraints || {}),
+              })),
             });
           }
           results.push({ modelPath: op.modelPath, action: op.action, success: true, result });
