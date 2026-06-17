@@ -5,6 +5,7 @@ import { AEMAuth, AEMFetch } from './aem.fetch.js';
 import { filterNodeTree, filterProperties } from './aem.filter.js';
 import { ContentFragmentManager } from './aem.content-fragments.js';
 import { ExperienceFragmentManager } from './aem.experience-fragments.js';
+import { LaunchManager } from './aem.launches.js';
 import { LOGGER } from '../utils/logger.js';
 
 export interface AEMConnectorConfig {
@@ -38,6 +39,7 @@ export class AEMConnector {
   private readonly fetch: AEMFetch;
   readonly contentFragments: ContentFragmentManager;
   readonly experienceFragments: ExperienceFragmentManager;
+  readonly launches: LaunchManager;
 
   constructor(params: CliParams) {
     this.isInitialized = false;
@@ -51,6 +53,7 @@ export class AEMConnector {
     });
     this.contentFragments = new ContentFragmentManager(this.fetch, this.isAEMaaCS);
     this.experienceFragments = new ExperienceFragmentManager(this.fetch, this.config.aem.host);
+    this.launches = new LaunchManager(this.fetch, this.config.aem.host, this.isAEMaaCS);
   }
 
   async init() {
@@ -3697,5 +3700,55 @@ export class AEMConnector {
   }
   async manageExperienceFragmentVariation(params: any): Promise<object> {
     return this.experienceFragments.manageExperienceFragmentVariation(params);
+  }
+
+  // ─── Launch Delegates ─────────────────────────────────
+
+  async listPageLaunches(): Promise<object> {
+    return this.launches.listPageLaunches();
+  }
+
+  async createPageLaunch(params: { sourcePaths: string[]; title: string; liveDate?: string }): Promise<object> {
+    return this.launches.createPageLaunch(params);
+  }
+
+  async getPageLaunch(params: { launchId: string }): Promise<object> {
+    return this.launches.getPageLaunch(params);
+  }
+
+  async editPageLaunchSources(params: { launchPath: string; addPaths?: string[]; removePaths?: string[] }): Promise<object> {
+    return this.launches.editPageLaunchSources(params);
+  }
+
+  async copyPageToLaunch(params: { launchPath: string; pagePath: string }): Promise<object> {
+    return this.launches.copyPageToLaunch(params);
+  }
+
+  async promotePageLaunch(params: { launchPath: string; pagePaths?: string[] }): Promise<object> {
+    return this.launches.promotePageLaunch(params);
+  }
+
+  async deletePageLaunch(params: { launchPath: string }): Promise<object> {
+    return this.launches.deletePageLaunch(params);
+  }
+
+  async createContentFragmentLaunch(params: { fragmentUUIDs: string[]; title: string; pollIntervalMs?: number; maxPollAttempts?: number }): Promise<object> {
+    return this.launches.createContentFragmentLaunch(params);
+  }
+
+  async createContentFragmentLaunchWithLiveDate(params: { fragmentUUIDs: string[]; title: string; liveDate: string; pollIntervalMs?: number; maxPollAttempts?: number }): Promise<object> {
+    return this.launches.createContentFragmentLaunchWithLiveDate(params);
+  }
+
+  async getContentFragmentLaunch(params: { launchId: string }): Promise<object> {
+    return this.launches.getContentFragmentLaunch(params);
+  }
+
+  async promoteContentFragmentLaunch(params: { launchId: string; etag: string }): Promise<object> {
+    return this.launches.promoteContentFragmentLaunch(params);
+  }
+
+  async editContentFragmentLaunchSources(params: { launchId: string; etag: string; addUUIDs?: string[]; removeUUIDs?: string[] }): Promise<object> {
+    return this.launches.editContentFragmentLaunchSources(params);
   }
 }
