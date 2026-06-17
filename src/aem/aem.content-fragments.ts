@@ -352,20 +352,48 @@ export class ContentFragmentManager {
   }
 
   private async deleteContentFragment(params: any): Promise<object> {
-    const { fragmentPath, force } = params;
+    const { fragmentPath, force, etag, dryRun } = params;
     if (!fragmentPath) {
       throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'delete requires fragmentPath');
     }
 
+    if (dryRun) {
+      let wouldDelete = false;
+      try {
+        if (this.isAEMaaCS) {
+          const result = await this.fetch.get('/adobe/sites/cf/fragments', { path: fragmentPath });
+          wouldDelete = !!(result.items?.[0] || result.path);
+        } else {
+          await this.fetch.get(`/api/assets${fragmentPath}.json`);
+          wouldDelete = true;
+        }
+      } catch {
+        wouldDelete = false;
+      }
+      return createSuccessResponse({
+        action: 'delete',
+        dryRun: true,
+        path: fragmentPath,
+        wouldDelete,
+        message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+      }, 'manageContentFragment');
+    }
+
     return safeExecute<object>(async () => {
+      const conditionalHeaders = etag ? new Headers({ 'If-Match': etag }) : undefined;
+
       if (this.isAEMaaCS) {
         const url = `/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}${force ? '&force=true' : ''}`;
-        await this.fetch.delete(url);
+        await this.fetch.delete(url, conditionalHeaders ? { headers: conditionalHeaders } : {});
         return createSuccessResponse({ action: 'delete', path: fragmentPath }, 'manageContentFragment');
       } else {
         const formData = new URLSearchParams();
         formData.append(':operation', 'delete');
-        await this.fetch.post(fragmentPath, formData);
+        await this.fetch.post(
+          fragmentPath,
+          formData,
+          conditionalHeaders ? { headers: conditionalHeaders } : {},
+        );
         return createSuccessResponse({ action: 'delete', path: fragmentPath }, 'manageContentFragment');
       }
     }, 'deleteContentFragment');
