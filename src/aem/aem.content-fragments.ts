@@ -14,12 +14,14 @@ export class ContentFragmentManager {
   async getContentFragment(path: string): Promise<object> {
     return safeExecute<object>(async () => {
       if (this.isAEMaaCS) {
-        const result = await this.fetch.get('/adobe/sites/cf/fragments', { path });
+        const { body: result, etag } = await this.fetch.getWithEtag('/adobe/sites/cf/fragments', { path });
         const fragment = result.items?.[0] || result;
-        return createSuccessResponse(this.normalizeFragment(fragment), 'getContentFragment');
+        const normalized = this.normalizeFragment(fragment);
+        return createSuccessResponse({ ...normalized, etag }, 'getContentFragment');
       } else {
-        const result = await this.fetch.get(`/api/assets${path}.json`);
-        return createSuccessResponse(this.normalizeFragmentFrom65(result, path), 'getContentFragment');
+        const { body: result, etag } = await this.fetch.getWithEtag(`/api/assets${path}.json`);
+        const normalized = this.normalizeFragmentFrom65(result, path);
+        return createSuccessResponse({ ...normalized, etag }, 'getContentFragment');
       }
     }, 'getContentFragment');
   }
