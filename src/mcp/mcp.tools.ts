@@ -295,6 +295,61 @@ const experienceFragmentSchemas = {
   }).passthrough(),
 };
 
+// ─── Launches ─────────────────────────────────────────
+const launchSchemas = {
+  listPageLaunches: z.object({}).passthrough(),
+  createPageLaunch: z.object({
+    sourcePaths: z.array(z.string()).describe('One or more source page paths to include in the launch'),
+    title: z.string().describe('Launch title'),
+    liveDate: z.string().optional().describe('Optional ISO 8601 date/time for scheduled auto-promotion (e.g., "2026-09-01T09:00:00.000Z")'),
+  }).passthrough(),
+  getPageLaunch: z.object({
+    launchId: z.string().describe('Launch ID (leaf segment of the launch path)'),
+  }).passthrough(),
+  editPageLaunchSources: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch (e.g., /content/launches/2026/09/01/my-launch)'),
+    addPaths: z.array(z.string()).optional().describe('Page paths to add to the launch'),
+    removePaths: z.array(z.string()).optional().describe('Page paths to remove from the launch'),
+  }).passthrough(),
+  copyPageToLaunch: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch'),
+    pagePath: z.string().describe('Page path to copy into the launch'),
+  }).passthrough(),
+  promotePageLaunch: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch to promote'),
+    pagePaths: z.array(z.string()).optional().describe('Specific page paths to promote; omit to promote all pages'),
+  }).passthrough(),
+  deletePageLaunch: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch to permanently delete'),
+  }).passthrough(),
+  createContentFragmentLaunch: z.object({
+    fragmentUUIDs: z.array(z.string()).describe('UUIDs of content fragments to include in the launch'),
+    title: z.string().describe('Launch title'),
+    pollIntervalMs: z.number().optional().describe('Polling interval in milliseconds while waiting for launch to be ready (default: 2000)'),
+    maxPollAttempts: z.number().optional().describe('Maximum polling attempts before returning (default: 15)'),
+  }).passthrough(),
+  createContentFragmentLaunchWithLiveDate: z.object({
+    fragmentUUIDs: z.array(z.string()).describe('UUIDs of content fragments to include in the launch'),
+    title: z.string().describe('Launch title'),
+    liveDate: z.string().describe('ISO 8601 date/time for scheduled auto-promotion (e.g., "2026-09-01T09:00:00.000Z")'),
+    pollIntervalMs: z.number().optional().describe('Polling interval in milliseconds (default: 2000)'),
+    maxPollAttempts: z.number().optional().describe('Maximum polling attempts (default: 15)'),
+  }).passthrough(),
+  getContentFragmentLaunch: z.object({
+    launchId: z.string().describe('CF launch ID returned by createContentFragmentLaunch'),
+  }).passthrough(),
+  promoteContentFragmentLaunch: z.object({
+    launchId: z.string().describe('CF launch ID to promote'),
+    etag: z.string().describe('ETag value from getContentFragmentLaunch — required for optimistic concurrency'),
+  }).passthrough(),
+  editContentFragmentLaunchSources: z.object({
+    launchId: z.string().describe('CF launch ID'),
+    etag: z.string().describe('ETag value from getContentFragmentLaunch — required for optimistic concurrency'),
+    addUUIDs: z.array(z.string()).optional().describe('Fragment UUIDs to add to the launch'),
+    removeUUIDs: z.array(z.string()).optional().describe('Fragment UUIDs to remove from the launch'),
+  }).passthrough(),
+};
+
 // ─── Combined Schemas ─────────────────────────────────
 export const toolSchemas = {
   ...contentSchemas,
@@ -307,6 +362,7 @@ export const toolSchemas = {
   ...workflowSchemas,
   ...contentFragmentSchemas,
   ...experienceFragmentSchemas,
+  ...launchSchemas,
 } as const;
 
 export type ToolName = keyof typeof toolSchemas;
@@ -363,6 +419,18 @@ export const toolDescriptions: Record<ToolName, string> = {
   listExperienceFragments: 'List experience fragments under a path with optional template filter',
   manageExperienceFragment: 'Create, update, or delete an experience fragment. Auto-creates master variation on create.',
   manageExperienceFragmentVariation: 'Create, update, or delete a variation within an experience fragment',
+  listPageLaunches: 'List all page launches sorted by creation date (newest first). Returns launch ID, title, source pages, live date, status, and author.',
+  createPageLaunch: 'Create a new page launch from one or more source page paths. Optionally schedule auto-promotion with liveDate (ISO 8601). Returns the launch ID and JCR path.',
+  getPageLaunch: 'Get details of a page launch by ID: source pages, launch copies, live date, and status.',
+  editPageLaunchSources: 'Add or remove pages from an existing page launch. Provide addPaths and/or removePaths.',
+  copyPageToLaunch: 'Convenience: add a single page to an existing launch and return the expected launch copy path.',
+  promotePageLaunch: 'Promote a page launch to production. Optionally promote only a subset of pages; omit pagePaths to promote all.',
+  deletePageLaunch: 'Permanently delete a page launch and all its launch copies.',
+  createContentFragmentLaunch: 'Create a CF launch from fragment UUIDs (AEMaaCS only). Polls until the launch is ready. Returns launchId, status, and poll attempt count.',
+  createContentFragmentLaunchWithLiveDate: 'Create a CF launch with a scheduled auto-promotion date (AEMaaCS only). Polls until ready. Returns launchId, liveDate, and status.',
+  getContentFragmentLaunch: 'Get CF launch details by ID (AEMaaCS only). Returns ETag required for subsequent mutations (promote, edit sources).',
+  promoteContentFragmentLaunch: 'Merge a CF launch back to production (AEMaaCS only). Requires the ETag from getContentFragmentLaunch for optimistic concurrency.',
+  editContentFragmentLaunchSources: 'Add or remove fragments from an existing CF launch (AEMaaCS only). Requires ETag from getContentFragmentLaunch.',
 };
 
 /**
@@ -472,4 +540,18 @@ export const toolAnnotations: Record<string, { group: string; readOnly: boolean;
   listExperienceFragments: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
   manageExperienceFragment: { group: 'fragments-experience', readOnly: false, complexity: 'medium' },
   manageExperienceFragmentVariation: { group: 'fragments-experience', readOnly: false, complexity: 'medium' },
+  // Page Launches
+  listPageLaunches: { group: 'launches', readOnly: true, complexity: 'low' },
+  createPageLaunch: { group: 'launches', readOnly: false, complexity: 'medium' },
+  getPageLaunch: { group: 'launches', readOnly: true, complexity: 'low' },
+  editPageLaunchSources: { group: 'launches', readOnly: false, complexity: 'medium' },
+  copyPageToLaunch: { group: 'launches', readOnly: false, complexity: 'medium' },
+  promotePageLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  deletePageLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  // CF Launches (AEMaaCS only)
+  createContentFragmentLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  createContentFragmentLaunchWithLiveDate: { group: 'launches', readOnly: false, complexity: 'high' },
+  getContentFragmentLaunch: { group: 'launches', readOnly: true, complexity: 'medium' },
+  promoteContentFragmentLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  editContentFragmentLaunchSources: { group: 'launches', readOnly: false, complexity: 'high' },
 };
