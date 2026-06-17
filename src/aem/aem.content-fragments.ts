@@ -367,8 +367,8 @@ export class ContentFragmentManager {
           await this.fetch.get(`/api/assets${fragmentPath}.json`);
           wouldDelete = true;
         }
-      } catch {
-        wouldDelete = false;
+      } catch (err: any) {
+        if (err?.status !== 404 && err?.response?.status !== 404) throw err;
       }
       return createSuccessResponse({
         action: 'delete',

@@ -116,6 +116,7 @@ export class LaunchManager {
     return safeExecute<object>(async () => {
       const formData = new URLSearchParams();
       formData.append('_charset_', 'utf-8');
+      formData.append('launchPath', launchPath);
       addPaths.forEach((p) => formData.append('addPath', p));
       removePaths.forEach((p) => formData.append('removePath', p));
       await this.fetch.post(
@@ -136,8 +137,7 @@ export class LaunchManager {
     }
     return safeExecute<object>(async () => {
       await this.editPageLaunchSources({ launchPath, addPaths: [pagePath] });
-      const launchId = launchPath.split('/').pop() || '';
-      const copyPath = pagePath.replace('/content/', `/content/launches/${launchId}/`);
+      const copyPath = `${launchPath}${pagePath}`;
       return createSuccessResponse({ launchPath, pagePath, copyPath }, 'copyPageToLaunch');
     }, 'copyPageToLaunch');
   }
@@ -209,9 +209,12 @@ export class LaunchManager {
         const poll = await this.fetch.get(`/adobe/sites/cf/launches/${launchId}`, undefined, {
           headers: { 'Accept': 'application/json' },
         });
-        status = poll?.status || 'ready';
+        status = poll?.status ?? status;
         LOGGER.log(`CF launch poll attempt ${attempt + 1}: status=${status}`);
         attempt++;
+      }
+      if (status === 'failed' || status === 'error') {
+        throw createAEMError(AEM_ERROR_CODES.UPDATE_FAILED, `CF launch creation failed with status: ${status}`, { launchId, status });
       }
       return createSuccessResponse({
         launchId,
@@ -255,9 +258,12 @@ export class LaunchManager {
         const poll = await this.fetch.get(`/adobe/sites/cf/launches/${launchId}`, undefined, {
           headers: { 'Accept': 'application/json' },
         });
-        status = poll?.status || 'ready';
+        status = poll?.status ?? status;
         LOGGER.log(`CF launch poll attempt ${attempt + 1}: status=${status}`);
         attempt++;
+      }
+      if (status === 'failed' || status === 'error') {
+        throw createAEMError(AEM_ERROR_CODES.UPDATE_FAILED, `CF launch creation failed with status: ${status}`, { launchId, status });
       }
       return createSuccessResponse({
         launchId,
