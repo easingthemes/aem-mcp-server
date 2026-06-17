@@ -74,6 +74,7 @@ const pageSchemas = {
   deletePage: z.object({
     pagePath: z.string().describe('Path to the page to delete'),
     force: z.boolean().optional().describe('Force deletion'),
+    dryRun: z.boolean().optional().describe('When true: validates the page exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
   activatePage: z.object({
     pagePath: z.string().describe('Path to the page'),
@@ -116,6 +117,7 @@ const componentSchemas = {
   deleteComponent: z.object({
     componentPath: z.string().describe('Path to the component to delete'),
     force: z.boolean().optional().describe('Force deletion'),
+    dryRun: z.boolean().optional().describe('When true: validates the component exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
   getComponents: z.object({
     path: z.string().optional().describe('Optional: Component root path to fetch components from. If not provided, uses the configured default path.'),
@@ -158,10 +160,12 @@ const assetSchemas = {
     metadata: z.record(z.unknown()).optional().describe('Metadata to update'),
     fileContent: z.string().optional().describe('File content'),
     mimeType: z.string().optional().describe('MIME type'),
+    etag: z.string().optional().describe('ETag from a prior getAssetMetadata call. When provided, sends If-Match header — returns ETAG_MISMATCH error if the asset changed since fetch. Omit to skip conflict detection.'),
   }).passthrough(),
   deleteAsset: z.object({
     assetPath: z.string().describe('Path to the asset to delete'),
     force: z.boolean().optional().describe('Force deletion'),
+    dryRun: z.boolean().optional().describe('When true: validates the asset exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
 };
 
@@ -252,6 +256,8 @@ const contentFragmentSchemas = {
     field: z.string().optional().describe('mergeJsonField: name of the field that holds a JSON-encoded string to patch'),
     jsonPointer: z.string().optional().describe('mergeJsonField: RFC-6901 pointer to the object to merge into (e.g. "/0/content/0/value"); default "" = field root'),
     merge: z.record(z.unknown()).optional().describe('mergeJsonField: keys to upsert into the resolved object (deep-merged; existing keys overwritten, untouched keys preserved)'),
+    etag: z.string().optional().describe('ETag from a prior getContentFragment call. When provided, sends If-Match header — returns ETAG_MISMATCH error if the fragment changed since fetch. Omit to skip conflict detection (last-write-wins). Applies to update and delete actions.'),
+    dryRun: z.boolean().optional().describe('When true and action is "delete": validates the fragment exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
   manageContentFragmentVariation: z.object({
     action: z.enum(['create', 'update', 'delete']).describe('Action to perform'),
@@ -328,18 +334,18 @@ export const toolDescriptions: Record<ToolName, string> = {
   getPageProperties: 'Get page properties',
   searchContent: 'Structured content search with filters (type, property values, path scope, fulltext). More flexible than executeJCRQuery. Use for finding nodes by property values or content type.',
   executeJCRQuery: 'Execute fulltext search on cq:Page nodes under /content. Uses QueryBuilder internally, NOT raw JCR-SQL2. For structured property-based queries, use searchContent instead.',
-  getAssetMetadata: 'Get DAM asset metadata including title, description, dimensions, format, tags, and custom properties. Path must be under /content/dam.',
+  getAssetMetadata: 'Get DAM asset metadata including title, description, dimensions, format, tags, and custom properties. Path must be under /content/dam. Response includes an "etag" field — pass it to updateAsset to enable conflict detection.',
   enhancedPageSearch: 'Intelligent page search with comprehensive fallback strategies and cross-section search',
   createPage: 'Create a new page in AEM. The resourceType will be automatically extracted from the template structure if not provided.',
-  deletePage: 'Delete a page from AEM',
+  deletePage: 'Delete a page from AEM. Use dryRun: true to preview what would be deleted without making changes.',
   createComponent: 'Create a component at a specific JCR path (you must know the exact container path). For automatic container detection and cq:template application, use addComponent instead.',
   addComponent: 'Add a component to a page with automatic parsys/container detection and cq:template application. Preferred over createComponent for most use cases.',
-  deleteComponent: 'Delete a component from AEM',
+  deleteComponent: 'Delete a component from AEM. Use dryRun: true to preview what would be deleted without making changes.',
   unpublishContent: 'Unpublish content from the publish environment',
   activatePage: 'Publish a page immediately via direct replication (synchronous). For approval-based publishing workflows, use startWorkflow with the request_for_activation model.',
   deactivatePage: 'Deactivate (unpublish) a single page',
-  updateAsset: 'Update an existing asset in AEM DAM',
-  deleteAsset: 'Delete an asset from AEM DAM',
+  updateAsset: 'Update an existing asset in AEM DAM. Pass the "etag" from getAssetMetadata to enable conflict detection (returns ETAG_MISMATCH if the asset changed since fetch).',
+  deleteAsset: 'Delete an asset from AEM DAM. Use dryRun: true to preview what would be deleted without making changes.',
   getTemplates: 'Get available page templates',
   getTemplateStructure: 'Get detailed structure of a specific template',
   getComponents: 'Get all components from the configured component root path (projectRoot1) or a specified path. Shows component name, title, description, resource type, and other metadata.',
@@ -357,7 +363,7 @@ export const toolDescriptions: Record<ToolName, string> = {
   getWorkItemRoutes: 'Get available routes for a work item (to see what steps are available)',
   getContentFragment: 'Get a content fragment with all fields, variations, and metadata',
   listContentFragments: 'List content fragments under a path with optional model filter',
-  manageContentFragment: 'Create, update, or delete a content fragment, or merge keys into a JSON-encoded-string field (action "mergeJsonField"). mergeJsonField reads the current blob, deep-merges your keys at an optional RFC-6901 jsonPointer, and writes it back server-side — use it to upsert a few keys into a field that stores a whole key→value map as one JSON string, without round-tripping the entire blob. Use action param to specify operation.',
+  manageContentFragment: 'Create, update, or delete a content fragment, or merge keys into a JSON-encoded-string field (action "mergeJsonField"). For update/delete, pass the "etag" from getContentFragment to enable conflict detection (returns ETAG_MISMATCH if CF changed since fetch). For delete, use dryRun: true to preview without changes. mergeJsonField reads the current blob, deep-merges your keys at an optional RFC-6901 jsonPointer, and writes it back server-side.',
   manageContentFragmentVariation: 'Create, update, or delete a variation within a content fragment',
   getExperienceFragment: 'Get an experience fragment with all variations, components, and metadata',
   listExperienceFragments: 'List experience fragments under a path with optional template filter',
