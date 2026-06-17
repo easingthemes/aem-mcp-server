@@ -792,11 +792,27 @@ export class AEMConnector {
 
   async deletePage(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { pagePath } = request;
+      const { pagePath, dryRun } = request;
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
-      // Try 'DELETE' first
+
+      if (dryRun) {
+        let exists = false;
+        try {
+          await this.fetch.get(`${pagePath}.json`);
+          exists = true;
+        } catch {
+          exists = false;
+        }
+        return createSuccessResponse({
+          dryRun: true,
+          path: pagePath,
+          wouldDelete: exists,
+          message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+        }, 'deletePage');
+      }
+
       let deleted = false;
       try {
         await this.fetch.delete(pagePath);
@@ -1653,26 +1669,41 @@ export class AEMConnector {
 
   async deleteComponent(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { componentPath } = request;
+      const { componentPath, dryRun } = request;
       if (!isValidContentPath(componentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid component path: ${String(componentPath)}`, { componentPath });
       }
+
+      if (dryRun) {
+        let exists = false;
+        try {
+          await this.fetch.get(`${componentPath}.json`);
+          exists = true;
+        } catch {
+          exists = false;
+        }
+        return createSuccessResponse({
+          dryRun: true,
+          path: componentPath,
+          wouldDelete: exists,
+          message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+        }, 'deleteComponent');
+      }
+
       let deleted = false;
-      // Use POST with :operation=delete as primary method (works better with SlingPostServlet)
       try {
         const formData = new URLSearchParams();
         formData.append(':operation', 'delete');
         await this.fetch.post(componentPath, formData);
         deleted = true;
       } catch (err: any) {
-        // If POST fails, try DELETE method as fallback
         if (err?.status === 405 || err?.response?.status === 405 || err?.status === 403 || err?.response?.status === 403) {
           try {
             await this.fetch.delete(componentPath);
             deleted = true;
           } catch (deleteErr: any) {
             LOGGER.error('Both POST and DELETE failed:', err.response?.status, deleteErr.response?.status);
-            throw err; // Throw original POST error
+            throw err;
           }
         } else {
           LOGGER.error('DELETE failed:', err.response?.status, err.response?.data);
@@ -1861,10 +1892,27 @@ export class AEMConnector {
 
   async deleteAsset(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { assetPath, force = false } = request;
+      const { assetPath, force = false, dryRun } = request;
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
+
+      if (dryRun) {
+        let exists = false;
+        try {
+          await this.fetch.get(`${assetPath}.json`);
+          exists = true;
+        } catch {
+          exists = false;
+        }
+        return createSuccessResponse({
+          dryRun: true,
+          path: assetPath,
+          wouldDelete: exists,
+          message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+        }, 'deleteAsset');
+      }
+
       await this.fetch.delete(assetPath);
       return createSuccessResponse({
         success: true,
