@@ -227,6 +227,89 @@ const workflowSchemas = {
   }).passthrough(),
 };
 
+// ─── CF Models ────────────────────────────────────────
+const contentFragmentModelSchemas = {
+  listContentFragmentModels: z.object({
+    path: z.string().optional().describe('Root configuration path to search under (default: /conf)'),
+    name: z.string().optional().describe('Filter by model title/name (substring match)'),
+    status: z.enum(['enabled', 'disabled']).optional().describe('Filter by model status'),
+    limit: z.number().optional().describe('Max results (default: 50)'),
+  }).passthrough(),
+  getContentFragmentModelSchema: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model (e.g., /conf/mysite/settings/dam/cfm/models/article)'),
+  }).passthrough(),
+  createContentFragmentModel: z.object({
+    parentPath: z.string().describe('Parent path where the model will be created (e.g., /conf/mysite/settings/dam/cfm/models)'),
+    name: z.string().describe('Node name for the model (lowercase, hyphens allowed)'),
+    title: z.string().describe('Human-readable model title'),
+    description: z.string().optional().describe('Model description'),
+    fields: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+      label: z.string().optional(),
+      required: z.boolean().optional(),
+      multiValue: z.boolean().optional(),
+      options: z.array(z.string()).optional(),
+      maxLength: z.number().optional(),
+      minLength: z.number().optional(),
+      minimum: z.number().optional(),
+      maximum: z.number().optional(),
+    }).passthrough()).optional().describe('Field definitions for the model'),
+    dryRun: z.boolean().optional().describe('Validate without creating (default: false)'),
+  }).passthrough(),
+  updateContentFragmentModel: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model to update'),
+    title: z.string().optional().describe('New title for the model'),
+    description: z.string().optional().describe('New description'),
+    addFields: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+      label: z.string().optional(),
+      required: z.boolean().optional(),
+      multiValue: z.boolean().optional(),
+      options: z.array(z.string()).optional(),
+      maxLength: z.number().optional(),
+    }).passthrough()).optional().describe('New fields to add to the model'),
+    removeFields: z.array(z.string()).optional().describe('Field names to remove'),
+    updateFields: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+      label: z.string().optional(),
+      required: z.boolean().optional(),
+      multiValue: z.boolean().optional(),
+      maxLength: z.number().optional(),
+    }).passthrough()).optional().describe('Existing fields to modify'),
+  }).passthrough(),
+  deleteContentFragmentModel: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model to delete'),
+    force: z.boolean().optional().describe('Delete even if fragments still use this model (default: false)'),
+  }).passthrough(),
+  batchManageContentFragmentModels: z.object({
+    operations: z.array(z.object({
+      action: z.enum(['copy', 'delete', 'patch']),
+      modelPath: z.string().describe('Source model path'),
+      targetPath: z.string().optional().describe('Target path (required for copy)'),
+      patch: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        addFields: z.array(z.object({
+          name: z.string(),
+          type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+        }).passthrough()).optional(),
+        removeFields: z.array(z.string()).optional(),
+      }).passthrough().optional().describe('Patch payload (required for patch action)'),
+    }).passthrough()).describe('List of model operations to execute'),
+    continueOnError: z.boolean().optional().describe('Continue processing if one operation fails (default: true)'),
+    validateFirst: z.boolean().optional().describe('Validate all operations before executing any (default: false)'),
+  }).passthrough(),
+  listContentFragmentTemplates: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model whose templates to list'),
+  }).passthrough(),
+  graphqlIntrospection: z.object({
+    endpoint: z.string().optional().describe('GraphQL endpoint path (default: /content/graphql/global/endpoint.gql)'),
+  }).passthrough(),
+};
+
 // ─── Content Fragments ────────────────────────────────
 const contentFragmentSchemas = {
   getContentFragment: z.object({
@@ -305,6 +388,7 @@ export const toolSchemas = {
   ...searchSchemas,
   ...templateSchemas,
   ...workflowSchemas,
+  ...contentFragmentModelSchemas,
   ...contentFragmentSchemas,
   ...experienceFragmentSchemas,
 } as const;
@@ -359,6 +443,14 @@ export const toolDescriptions: Record<ToolName, string> = {
   listContentFragments: 'List content fragments under a path with optional model filter',
   manageContentFragment: 'Create, update, or delete a content fragment, or merge keys into a JSON-encoded-string field (action "mergeJsonField"). mergeJsonField reads the current blob, deep-merges your keys at an optional RFC-6901 jsonPointer, and writes it back server-side — use it to upsert a few keys into a field that stores a whole key→value map as one JSON string, without round-tripping the entire blob. Use action param to specify operation.',
   manageContentFragmentVariation: 'Create, update, or delete a variation within a content fragment',
+  listContentFragmentModels: 'List all CF models under a configuration path. Filter by name substring, status (enabled/disabled), or folder. Returns model path, title, field count, and last modified date.',
+  getContentFragmentModelSchema: 'Get the full field schema for a CF model — field names, types (single-line-text, multi-line-text, number, boolean, date-time, enumeration, content-reference, fragment-reference, json), required flag, multi-value flag, and constraints. Use this before creating fragments to discover required fields.',
+  createContentFragmentModel: 'Create a new CF model with field definitions. Use dryRun=true to validate field types and names without persisting. Supports all AEM field types.',
+  updateContentFragmentModel: 'Add, remove, or modify fields on an existing CF model. Use addFields to append new fields, removeFields with field names to drop, updateFields to modify existing field properties.',
+  deleteContentFragmentModel: 'Delete a CF model. Blocked if any fragments still reference the model unless force=true is passed.',
+  batchManageContentFragmentModels: 'Copy, patch, or delete multiple CF models in one call. Use continueOnError=true (default) to process all even if some fail. Use validateFirst=true to check all operations before executing any.',
+  listContentFragmentTemplates: 'List all templates defined under a CF model path.',
+  graphqlIntrospection: 'Execute a GraphQL __schema introspection query against the AEM GraphQL endpoint. Returns all content types, available query fields, and field types. Useful for discovering fragment models exposed via headless GraphQL.',
   getExperienceFragment: 'Get an experience fragment with all variations, components, and metadata',
   listExperienceFragments: 'List experience fragments under a path with optional template filter',
   manageExperienceFragment: 'Create, update, or delete an experience fragment. Auto-creates master variation on create.',
@@ -467,6 +559,15 @@ export const toolAnnotations: Record<string, { group: string; readOnly: boolean;
   listContentFragments: { group: 'fragments-content', readOnly: true, complexity: 'low' },
   manageContentFragment: { group: 'fragments-content', readOnly: false, complexity: 'medium' },
   manageContentFragmentVariation: { group: 'fragments-content', readOnly: false, complexity: 'medium' },
+  // CF Models
+  listContentFragmentModels: { group: 'fragments-models', readOnly: true, complexity: 'low' },
+  getContentFragmentModelSchema: { group: 'fragments-models', readOnly: true, complexity: 'low' },
+  createContentFragmentModel: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  updateContentFragmentModel: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  deleteContentFragmentModel: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  batchManageContentFragmentModels: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  listContentFragmentTemplates: { group: 'fragments-models', readOnly: true, complexity: 'low' },
+  graphqlIntrospection: { group: 'fragments-models', readOnly: true, complexity: 'medium' },
   // Experience Fragments
   getExperienceFragment: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
   listExperienceFragments: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
