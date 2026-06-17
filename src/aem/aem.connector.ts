@@ -4,6 +4,7 @@ import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
 import { filterNodeTree, filterProperties } from './aem.filter.js';
 import { ContentFragmentManager } from './aem.content-fragments.js';
+import { ContentFragmentModelManager } from './aem.cf-models.js';
 import { ExperienceFragmentManager } from './aem.experience-fragments.js';
 import { LOGGER } from '../utils/logger.js';
 
@@ -37,6 +38,7 @@ export class AEMConnector {
   aemConfig: AEMConfig;
   private readonly fetch: AEMFetch;
   readonly contentFragments: ContentFragmentManager;
+  readonly cfModels: ContentFragmentModelManager;
   readonly experienceFragments: ExperienceFragmentManager;
 
   constructor(params: CliParams) {
@@ -50,6 +52,7 @@ export class AEMConnector {
       timeout: this.aemConfig.queries.timeoutMs,
     });
     this.contentFragments = new ContentFragmentManager(this.fetch, this.isAEMaaCS);
+    this.cfModels = new ContentFragmentModelManager(this.fetch, this.isAEMaaCS);
     this.experienceFragments = new ExperienceFragmentManager(this.fetch, this.config.aem.host);
   }
 
@@ -3718,6 +3721,32 @@ export class AEMConnector {
         timestamp: new Date().toISOString()
       }, 'getWorkItemRoutes');
     }, 'getWorkItemRoutes');
+  }
+
+  // ─── CF Models (delegated) ───────────────────────────
+  async listContentFragmentModels(params: any): Promise<object> {
+    return this.cfModels.listContentFragmentModels(params);
+  }
+  async getContentFragmentModelSchema(params: any): Promise<object> {
+    return this.cfModels.getContentFragmentModelSchema(params);
+  }
+  async createContentFragmentModel(params: any): Promise<object> {
+    return this.cfModels.createContentFragmentModel(params);
+  }
+  async updateContentFragmentModel(params: any): Promise<object> {
+    return this.cfModels.updateContentFragmentModel(params);
+  }
+  async deleteContentFragmentModel(params: any): Promise<object> {
+    return this.cfModels.deleteContentFragmentModel(params);
+  }
+  async batchManageContentFragmentModels(params: any): Promise<object> {
+    return this.cfModels.batchManageContentFragmentModels(params);
+  }
+  async listContentFragmentTemplates(params: any): Promise<object> {
+    return this.cfModels.listContentFragmentTemplates(params);
+  }
+  async graphqlIntrospection(params: any): Promise<object> {
+    return this.cfModels.graphqlIntrospection(params);
   }
 
   // ─── Content Fragments (delegated) ───────────────────

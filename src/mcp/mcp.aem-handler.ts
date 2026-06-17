@@ -132,6 +132,22 @@ export class MCPRequestHandler {
           return await this.aemConnector.delegateWorkItem(params.workItemPath, params.delegatee);
         case 'getWorkItemRoutes':
           return await this.aemConnector.getWorkItemRoutes(params.workItemPath);
+        case 'listContentFragmentModels':
+          return await this.aemConnector.listContentFragmentModels(params);
+        case 'getContentFragmentModelSchema':
+          return await this.aemConnector.getContentFragmentModelSchema(params);
+        case 'createContentFragmentModel':
+          return await this.aemConnector.createContentFragmentModel(params);
+        case 'updateContentFragmentModel':
+          return await this.aemConnector.updateContentFragmentModel(params);
+        case 'deleteContentFragmentModel':
+          return await this.aemConnector.deleteContentFragmentModel(params);
+        case 'batchManageContentFragmentModels':
+          return await this.aemConnector.batchManageContentFragmentModels(params);
+        case 'listContentFragmentTemplates':
+          return await this.aemConnector.listContentFragmentTemplates(params);
+        case 'graphqlIntrospection':
+          return await this.aemConnector.graphqlIntrospection(params);
         case 'getContentFragment':
           return await this.aemConnector.getContentFragment(params.path);
         case 'listContentFragments':
