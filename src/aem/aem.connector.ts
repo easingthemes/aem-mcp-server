@@ -774,11 +774,12 @@ export class AEMConnector {
   async getAssetMetadata(assetPath: string): Promise<object> {
     return safeExecute<object>(async () => {
       const url = `${assetPath}.json`;
-      const data = await this.fetch.get(url);
+      const { body: data, etag } = await this.fetch.getWithEtag(url);
       const metadata = data['jcr:content']?.metadata || {};
       return createSuccessResponse({
         assetPath,
         metadata,
+        etag,
         fullData: data,
       }, 'getAssetMetadata');
     }, 'getAssetMetadata');
@@ -1824,27 +1825,25 @@ export class AEMConnector {
 
   async updateAsset(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { assetPath, metadata, fileContent, mimeType } = request;
+      const { assetPath, metadata, fileContent, mimeType, etag } = request;
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
       const formData = new URLSearchParams();
-      // Update file content if provided
       if (fileContent) {
         formData.append('file', fileContent);
         if (mimeType) {
           formData.append('jcr:content/jcr:mimeType', mimeType);
         }
       }
-      // Update metadata if provided
       if (metadata && typeof metadata === 'object') {
         Object.entries(metadata).forEach(([key, value]) => {
           formData.append(`jcr:content/metadata/${key}`, String(value));
         });
       }
+      const postOptions: RequestInit = etag ? { headers: new Headers({ 'If-Match': etag }) } : {};
       try {
-        const updateResponse = await this.fetch.post(assetPath, formData);
-        // Verify the update
+        const updateResponse = await this.fetch.post(assetPath, formData, postOptions);
         const assetData = await this.fetch.get(`${assetPath}.json`);
         return createSuccessResponse({
           success: true,
