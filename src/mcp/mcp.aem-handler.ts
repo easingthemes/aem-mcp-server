@@ -148,6 +148,32 @@ export class MCPRequestHandler {
           return await this.aemConnector.manageExperienceFragment(params);
         case 'manageExperienceFragmentVariation':
           return await this.aemConnector.manageExperienceFragmentVariation(params);
+        // Page Launches
+        case 'listPageLaunches':
+          return await this.aemConnector.listPageLaunches();
+        case 'createPageLaunch':
+          return await this.aemConnector.createPageLaunch(params);
+        case 'getPageLaunch':
+          return await this.aemConnector.getPageLaunch(params);
+        case 'editPageLaunchSources':
+          return await this.aemConnector.editPageLaunchSources(params);
+        case 'copyPageToLaunch':
+          return await this.aemConnector.copyPageToLaunch(params);
+        case 'promotePageLaunch':
+          return await this.aemConnector.promotePageLaunch(params);
+        case 'deletePageLaunch':
+          return await this.aemConnector.deletePageLaunch(params);
+        // CF Launches (AEMaaCS only)
+        case 'createContentFragmentLaunch':
+          return await this.aemConnector.createContentFragmentLaunch(params);
+        case 'createContentFragmentLaunchWithLiveDate':
+          return await this.aemConnector.createContentFragmentLaunchWithLiveDate(params);
+        case 'getContentFragmentLaunch':
+          return await this.aemConnector.getContentFragmentLaunch(params);
+        case 'promoteContentFragmentLaunch':
+          return await this.aemConnector.promoteContentFragmentLaunch(params);
+        case 'editContentFragmentLaunchSources':
+          return await this.aemConnector.editContentFragmentLaunchSources(params);
         default:
           throw new Error(`Unknown method: ${method}`);
       }
