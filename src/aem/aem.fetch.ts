@@ -347,6 +347,67 @@ export class AEMFetch {
   }
 
   /**
+   * Performs a PATCH request with JSON or form data and optional timeout.
+   */
+  async patch(url: string, data: any, options: RequestInit = {}, timeout?: number): Promise<any> {
+    let body: BodyInit;
+    const headers = options.headers instanceof Headers
+      ? new Headers(options.headers)
+      : new Headers(options.headers || {});
+
+    if (data instanceof URLSearchParams) {
+      body = data;
+      headers.set('Content-Type', 'application/x-www-form-urlencoded');
+    } else {
+      body = JSON.stringify(data);
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+    }
+
+    const fullUrl = this.buildUrlWithParams(url);
+    const { headers: _, ...optionsWithoutHeaders } = options;
+    return this.request(fullUrl, { ...optionsWithoutHeaders, method: 'PATCH', body, headers }, timeout);
+  }
+
+  /**
+   * Performs a GET request and returns both the parsed JSON and the ETag header.
+   * Useful for endpoints that require optimistic concurrency (e.g., CF launches).
+   */
+  async getWithHeaders(url: string, params?: Record<string, any>, options: RequestInit = {}, timeout?: number): Promise<{ data: any; etag: string | null }> {
+    if (!this.fetch) {
+      throw new Error('AEMFetch not initialized. Call await init() before making requests.');
+    }
+    const fullUrl = this.buildUrlWithParams(url, params);
+    const { timeoutId, signal } = this.getTimeoutOptions(timeout);
+    if (timeout) {
+      options.signal = signal;
+    }
+    try {
+      const response = await this.fetch(fullUrl, { ...options, redirect: 'follow' });
+      if (response.status === 401) {
+        await this.refreshAuthToken();
+        const retryResponse = await this.fetch(fullUrl, { ...options, redirect: 'follow' });
+        const text = await retryResponse.text();
+        const data = text ? JSON.parse(text) : {};
+        return { data, etag: retryResponse.headers.get('ETag') };
+      }
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        const error: any = new Error(`AEM GET failed: ${response.status} - ${errorText}`);
+        error.status = response.status;
+        error.response = { status: response.status, data: errorText || null };
+        throw error;
+      }
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      return { data, etag: response.headers.get('ETag') };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  /**
    * Performs a POST request and returns the raw Response object to access headers.
    * Useful for endpoints that return Location headers (like workflow creation).
    * @param url Relative URL string
