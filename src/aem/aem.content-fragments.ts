@@ -14,12 +14,14 @@ export class ContentFragmentManager {
   async getContentFragment(path: string): Promise<object> {
     return safeExecute<object>(async () => {
       if (this.isAEMaaCS) {
-        const result = await this.fetch.get('/adobe/sites/cf/fragments', { path });
+        const { body: result, etag } = await this.fetch.getWithEtag('/adobe/sites/cf/fragments', { path });
         const fragment = result.items?.[0] || result;
-        return createSuccessResponse(this.normalizeFragment(fragment), 'getContentFragment');
+        const normalized = this.normalizeFragment(fragment);
+        return createSuccessResponse({ ...normalized, etag }, 'getContentFragment');
       } else {
-        const result = await this.fetch.get(`/api/assets${path}.json`);
-        return createSuccessResponse(this.normalizeFragmentFrom65(result, path), 'getContentFragment');
+        const { body: result, etag } = await this.fetch.getWithEtag(`/api/assets${path}.json`);
+        const normalized = this.normalizeFragmentFrom65(result, path);
+        return createSuccessResponse({ ...normalized, etag }, 'getContentFragment');
       }
     }, 'getContentFragment');
   }
@@ -175,6 +177,8 @@ export class ContentFragmentManager {
     field?: string;
     jsonPointer?: string;
     merge?: Record<string, unknown>;
+    etag?: string;
+    dryRun?: boolean;
   }): Promise<object> {
     const { action } = params;
     switch (action) {
@@ -227,13 +231,13 @@ export class ContentFragmentManager {
   }
 
   private async updateContentFragment(params: any): Promise<object> {
-    const { fragmentPath, fields, description, title, variation = 'master' } = params;
+    const { fragmentPath, fields, description, title, variation = 'master', etag } = params;
     if (!fragmentPath) {
       throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'update requires fragmentPath');
     }
 
     return safeExecute<object>(async () => {
-      await this.writeFields(fragmentPath, variation, fields || {}, { title, description });
+      await this.writeFields(fragmentPath, variation, fields || {}, { title, description, etag });
       return createSuccessResponse({ action: 'update', path: fragmentPath, variation }, 'manageContentFragment');
     }, 'updateContentFragment');
   }
@@ -263,9 +267,11 @@ export class ContentFragmentManager {
     fragmentPath: string,
     variation: string,
     fields: Record<string, any>,
-    opts: { title?: string; description?: string } = {},
+    opts: { title?: string; description?: string; etag?: string } = {},
   ): Promise<void> {
-    const { title, description } = opts;
+    const { title, description, etag } = opts;
+    const conditionalHeaders = etag ? new Headers({ 'If-Match': etag }) : undefined;
+
     if (this.isAEMaaCS) {
       const body: any = {};
       if (title) body.title = title;
@@ -274,10 +280,18 @@ export class ContentFragmentManager {
         body.fields = fieldEntries.map(([k, v]) => ({ name: k, value: v }));
       }
       if (variation && variation !== 'master') {
-        await this.fetch.put(`/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}/variations/${variation}`, body);
+        await this.fetch.put(
+          `/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}/variations/${variation}`,
+          body,
+          conditionalHeaders ? { headers: conditionalHeaders } : {},
+        );
       } else {
         if (description) body.description = description;
-        await this.fetch.put(`/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}`, body);
+        await this.fetch.put(
+          `/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}`,
+          body,
+          conditionalHeaders ? { headers: conditionalHeaders } : {},
+        );
       }
     } else {
       const formData = new URLSearchParams();
@@ -286,7 +300,11 @@ export class ContentFragmentManager {
       for (const [key, value] of Object.entries(fields)) {
         formData.append(`./jcr:content/data/${variation}/${key}`, String(value));
       }
-      await this.fetch.post(fragmentPath, formData);
+      await this.fetch.post(
+        fragmentPath,
+        formData,
+        conditionalHeaders ? { headers: conditionalHeaders } : {},
+      );
     }
   }
 
@@ -334,20 +352,48 @@ export class ContentFragmentManager {
   }
 
   private async deleteContentFragment(params: any): Promise<object> {
-    const { fragmentPath, force } = params;
+    const { fragmentPath, force, etag, dryRun } = params;
     if (!fragmentPath) {
       throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, 'delete requires fragmentPath');
     }
 
+    if (dryRun) {
+      let wouldDelete = false;
+      try {
+        if (this.isAEMaaCS) {
+          const result = await this.fetch.get('/adobe/sites/cf/fragments', { path: fragmentPath });
+          wouldDelete = !!(result.items?.[0] || result.path);
+        } else {
+          await this.fetch.get(`/api/assets${fragmentPath}.json`);
+          wouldDelete = true;
+        }
+      } catch (err: any) {
+        if (err?.status !== 404 && err?.response?.status !== 404) throw err;
+      }
+      return createSuccessResponse({
+        action: 'delete',
+        dryRun: true,
+        path: fragmentPath,
+        wouldDelete,
+        message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+      }, 'manageContentFragment');
+    }
+
     return safeExecute<object>(async () => {
+      const conditionalHeaders = etag ? new Headers({ 'If-Match': etag }) : undefined;
+
       if (this.isAEMaaCS) {
         const url = `/adobe/sites/cf/fragments?path=${encodeURIComponent(fragmentPath)}${force ? '&force=true' : ''}`;
-        await this.fetch.delete(url);
+        await this.fetch.delete(url, conditionalHeaders ? { headers: conditionalHeaders } : {});
         return createSuccessResponse({ action: 'delete', path: fragmentPath }, 'manageContentFragment');
       } else {
         const formData = new URLSearchParams();
         formData.append(':operation', 'delete');
-        await this.fetch.post(fragmentPath, formData);
+        await this.fetch.post(
+          fragmentPath,
+          formData,
+          conditionalHeaders ? { headers: conditionalHeaders } : {},
+        );
         return createSuccessResponse({ action: 'delete', path: fragmentPath }, 'manageContentFragment');
       }
     }, 'deleteContentFragment');

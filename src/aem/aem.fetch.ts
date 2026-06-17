@@ -154,15 +154,10 @@ export class AEMFetch {
   }
 
   /**
-   * Internal request method with timeout and error handling.
-   * If a 401 Unauthorized is received, refreshes the auth token and retries once.
-   * @param url Absolute URL string
-   * @param options Fetch options
-   * @param timeout Optional timeout in ms
-   * @param isHtml Optional flag to indicate if response is HTML
-   * @returns Parsed JSON response
+   * Internal request method that returns both the parsed body and the raw Response.
+   * Shared by request() and getWithEtag() so response-header access is possible.
    */
-  private async request(url: string, options: RequestInit = {}, timeout?: number, isHtml?: boolean): Promise<any> {
+  private async requestWithResponse(url: string, options: RequestInit = {}, timeout?: number, isHtml?: boolean): Promise<{ body: any; response: Response }> {
     if (!this.fetch) {
       throw new Error('AEMFetch not initialized. Call await init(config) before making requests.');
     }
@@ -170,7 +165,6 @@ export class AEMFetch {
     if (timeout) {
       options.signal = signal;
     }
-    // Explicitly set redirect to follow (default behavior, but making it explicit)
     options.redirect = options.redirect || 'follow';
     let response: Response;
     try {
@@ -180,19 +174,15 @@ export class AEMFetch {
         await this.refreshAuthToken();
         response = await this.fetch(url, options);
       }
-      // Handle redirect status codes (300-399) - fetch should follow automatically, but log if it doesn't
       if (response.status >= 300 && response.status < 400 && !response.ok) {
         const location = response.headers.get('Location');
         if (location) {
           LOGGER.warn(`Redirect detected (${response.status}) from ${url} to ${location}`);
-          // Follow the redirect manually if fetch didn't
           const redirectUrl = location.startsWith('http') ? location : `${this.config.host}${location}`;
           response = await this.fetch(redirectUrl, { ...options, redirect: 'follow' });
         }
       }
       if (!response.ok) {
-        // Try to get error message from response body
-        // Clone response before reading to avoid consuming the stream
         const clonedResponse = response.clone();
         let errorMessage = `AEM ${options.method || 'GET'} failed: ${response.status}`;
         let errorText: string | null = null;
@@ -214,45 +204,34 @@ export class AEMFetch {
         error.response = { status: response.status, data: errorText || null };
         throw error;
       }
-      
-      // Handle empty responses (common for DELETE operations)
-      // 204 No Content or empty body should return null/empty object
+
       if (response.status === 204 || response.status === 200) {
         const contentType = response.headers.get('content-type') || '';
         const contentLength = response.headers.get('content-length');
-        
-        // If it's a DELETE operation and no content, return empty object
         if (options.method === 'DELETE' && (!contentLength || contentLength === '0')) {
-          return {};
+          return { body: {}, response };
         }
-        
-        // If content-type is not JSON and no content, return empty object
         if (!contentType.includes('application/json') && (!contentLength || contentLength === '0')) {
-          return {};
+          return { body: {}, response };
         }
       }
-      
+
       if (isHtml) {
-        return response.text();
+        const body = await response.text();
+        return { body, response };
       }
-      
-      // Check if response has content before parsing JSON
+
       const text = await response.text();
       if (!text || text.trim().length === 0) {
-        return {};
+        return { body: {}, response };
       }
-      
-      // Try to parse as JSON, but handle non-JSON responses gracefully
       try {
-        return JSON.parse(text);
+        return { body: JSON.parse(text), response };
       } catch (parseError: any) {
-        // If it's not JSON and we expected JSON, log a warning but return the text
-        // This handles cases where AEM returns HTML error pages
         if (options.method === 'DELETE') {
-          // For DELETE, if we can't parse JSON, assume success if status is 2xx
           if (response.status >= 200 && response.status < 300) {
             LOGGER.warn(`DELETE response was not JSON, but status ${response.status} indicates success`);
-            return { success: true, status: response.status };
+            return { body: { success: true, status: response.status }, response };
           }
         }
         throw new Error(`Failed to parse response as JSON: ${parseError.message}. Response: ${text.substring(0, 200)}`);
@@ -260,6 +239,20 @@ export class AEMFetch {
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
+  }
+
+  /**
+   * Internal request method with timeout and error handling.
+   * If a 401 Unauthorized is received, refreshes the auth token and retries once.
+   * @param url Absolute URL string
+   * @param options Fetch options
+   * @param timeout Optional timeout in ms
+   * @param isHtml Optional flag to indicate if response is HTML
+   * @returns Parsed JSON response
+   */
+  private async request(url: string, options: RequestInit = {}, timeout?: number, isHtml?: boolean): Promise<any> {
+    const { body } = await this.requestWithResponse(url, options, timeout, isHtml);
+    return body;
   }
 
   /**
@@ -274,6 +267,18 @@ export class AEMFetch {
   async get(url: string, params?: Record<string, any>, options: RequestInit = {}, timeout?: number, isHtml?: boolean): Promise<any> {
     const fullUrl = this.buildUrlWithParams(url, params);
     return this.request(fullUrl, options, timeout, isHtml);
+  }
+
+  /**
+   * Performs a GET request and returns both the parsed body and the ETag response header.
+   * Use this when you need optimistic concurrency control — pass the returned etag to
+   * write operations (update/delete) as an If-Match header.
+   */
+  async getWithEtag(url: string, params?: Record<string, any>, options: RequestInit = {}, timeout?: number): Promise<{ body: any; etag: string | null }> {
+    const fullUrl = this.buildUrlWithParams(url, params);
+    const { body, response } = await this.requestWithResponse(fullUrl, options, timeout);
+    const etag = response.headers.get('ETag');
+    return { body, etag };
   }
 
   /**
@@ -344,6 +349,74 @@ export class AEMFetch {
     const fullUrl = this.buildUrlWithParams(url);
     const { headers: _, ...optionsWithoutHeaders } = options;
     return this.request(fullUrl, { ...optionsWithoutHeaders, method: 'PUT', body, headers }, timeout);
+  }
+
+  /**
+   * Performs a PATCH request with JSON or form data and optional timeout.
+   */
+  async patch(url: string, data: any, options: RequestInit = {}, timeout?: number): Promise<any> {
+    let body: BodyInit;
+    const headers = options.headers instanceof Headers
+      ? new Headers(options.headers)
+      : new Headers(options.headers || {});
+
+    if (data instanceof URLSearchParams) {
+      body = data;
+      headers.set('Content-Type', 'application/x-www-form-urlencoded');
+    } else {
+      body = JSON.stringify(data);
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+    }
+
+    const fullUrl = this.buildUrlWithParams(url);
+    const { headers: _, ...optionsWithoutHeaders } = options;
+    return this.request(fullUrl, { ...optionsWithoutHeaders, method: 'PATCH', body, headers }, timeout);
+  }
+
+  /**
+   * Performs a GET request and returns both the parsed JSON and the ETag header.
+   * Useful for endpoints that require optimistic concurrency (e.g., CF launches).
+   */
+  async getWithHeaders(url: string, params?: Record<string, any>, options: RequestInit = {}, timeout?: number): Promise<{ data: any; etag: string | null }> {
+    if (!this.fetch) {
+      throw new Error('AEMFetch not initialized. Call await init() before making requests.');
+    }
+    const fullUrl = this.buildUrlWithParams(url, params);
+    const { timeoutId, signal } = this.getTimeoutOptions(timeout);
+    if (timeout) {
+      options.signal = signal;
+    }
+    try {
+      const response = await this.fetch(fullUrl, { ...options, redirect: 'follow' });
+      if (response.status === 401) {
+        await this.refreshAuthToken();
+        const retryResponse = await this.fetch(fullUrl, { ...options, redirect: 'follow' });
+        if (!retryResponse.ok) {
+          const errorText = await retryResponse.text().catch(() => '');
+          const error: any = new Error(`AEM GET failed: ${retryResponse.status} - ${errorText}`);
+          error.status = retryResponse.status;
+          error.response = { status: retryResponse.status, data: errorText || null };
+          throw error;
+        }
+        const text = await retryResponse.text();
+        const data = text ? JSON.parse(text) : {};
+        return { data, etag: retryResponse.headers.get('ETag') };
+      }
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        const error: any = new Error(`AEM GET failed: ${response.status} - ${errorText}`);
+        error.status = response.status;
+        error.response = { status: response.status, data: errorText || null };
+        throw error;
+      }
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      return { data, etag: response.headers.get('ETag') };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
   }
 
   /**

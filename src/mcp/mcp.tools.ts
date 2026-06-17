@@ -74,6 +74,7 @@ const pageSchemas = {
   deletePage: z.object({
     pagePath: z.string().describe('Path to the page to delete'),
     force: z.boolean().optional().describe('Force deletion'),
+    dryRun: z.boolean().optional().describe('When true: validates the page exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
   activatePage: z.object({
     pagePath: z.string().describe('Path to the page'),
@@ -116,6 +117,7 @@ const componentSchemas = {
   deleteComponent: z.object({
     componentPath: z.string().describe('Path to the component to delete'),
     force: z.boolean().optional().describe('Force deletion'),
+    dryRun: z.boolean().optional().describe('When true: validates the component exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
   getComponents: z.object({
     path: z.string().optional().describe('Optional: Component root path to fetch components from. If not provided, uses the configured default path.'),
@@ -158,10 +160,12 @@ const assetSchemas = {
     metadata: z.record(z.unknown()).optional().describe('Metadata to update'),
     fileContent: z.string().optional().describe('File content'),
     mimeType: z.string().optional().describe('MIME type'),
+    etag: z.string().optional().describe('ETag from a prior getAssetMetadata call. When provided, sends If-Match header — returns ETAG_MISMATCH error if the asset changed since fetch. Omit to skip conflict detection.'),
   }).passthrough(),
   deleteAsset: z.object({
     assetPath: z.string().describe('Path to the asset to delete'),
     force: z.boolean().optional().describe('Force deletion'),
+    dryRun: z.boolean().optional().describe('When true: validates the asset exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
 };
 
@@ -227,6 +231,89 @@ const workflowSchemas = {
   }).passthrough(),
 };
 
+// ─── CF Models ────────────────────────────────────────
+const contentFragmentModelSchemas = {
+  listContentFragmentModels: z.object({
+    path: z.string().optional().describe('Root configuration path to search under (default: /conf)'),
+    name: z.string().optional().describe('Filter by model title/name (substring match)'),
+    status: z.enum(['enabled', 'disabled']).optional().describe('Filter by model status'),
+    limit: z.number().optional().describe('Max results (default: 50)'),
+  }).passthrough(),
+  getContentFragmentModelSchema: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model (e.g., /conf/mysite/settings/dam/cfm/models/article)'),
+  }).passthrough(),
+  createContentFragmentModel: z.object({
+    parentPath: z.string().describe('Parent path where the model will be created (e.g., /conf/mysite/settings/dam/cfm/models)'),
+    name: z.string().describe('Node name for the model (lowercase, hyphens allowed)'),
+    title: z.string().describe('Human-readable model title'),
+    description: z.string().optional().describe('Model description'),
+    fields: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+      label: z.string().optional(),
+      required: z.boolean().optional(),
+      multiValue: z.boolean().optional(),
+      options: z.array(z.string()).optional(),
+      maxLength: z.number().optional(),
+      minLength: z.number().optional(),
+      minimum: z.number().optional(),
+      maximum: z.number().optional(),
+    }).passthrough()).optional().describe('Field definitions for the model'),
+    dryRun: z.boolean().optional().describe('Validate without creating (default: false)'),
+  }).passthrough(),
+  updateContentFragmentModel: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model to update'),
+    title: z.string().optional().describe('New title for the model'),
+    description: z.string().optional().describe('New description'),
+    addFields: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+      label: z.string().optional(),
+      required: z.boolean().optional(),
+      multiValue: z.boolean().optional(),
+      options: z.array(z.string()).optional(),
+      maxLength: z.number().optional(),
+    }).passthrough()).optional().describe('New fields to add to the model'),
+    removeFields: z.array(z.string()).optional().describe('Field names to remove'),
+    updateFields: z.array(z.object({
+      name: z.string(),
+      type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+      label: z.string().optional(),
+      required: z.boolean().optional(),
+      multiValue: z.boolean().optional(),
+      maxLength: z.number().optional(),
+    }).passthrough()).optional().describe('Existing fields to modify'),
+  }).passthrough(),
+  deleteContentFragmentModel: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model to delete'),
+    force: z.boolean().optional().describe('Delete even if fragments still use this model (default: false)'),
+  }).passthrough(),
+  batchManageContentFragmentModels: z.object({
+    operations: z.array(z.object({
+      action: z.enum(['copy', 'delete', 'patch']),
+      modelPath: z.string().describe('Source model path'),
+      targetPath: z.string().optional().describe('Target path (required for copy)'),
+      patch: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        addFields: z.array(z.object({
+          name: z.string(),
+          type: z.enum(['single-line-text', 'multi-line-text', 'number', 'boolean', 'date-time', 'enumeration', 'content-reference', 'fragment-reference', 'json']),
+        }).passthrough()).optional(),
+        removeFields: z.array(z.string()).optional(),
+      }).passthrough().optional().describe('Patch payload (required for patch action)'),
+    }).passthrough()).describe('List of model operations to execute'),
+    continueOnError: z.boolean().optional().describe('Continue processing if one operation fails (default: true)'),
+    validateFirst: z.boolean().optional().describe('Validate all operations before executing any (default: false)'),
+  }).passthrough(),
+  listContentFragmentTemplates: z.object({
+    modelPath: z.string().describe('Full JCR path to the CF model whose templates to list'),
+  }).passthrough(),
+  graphqlIntrospection: z.object({
+    endpoint: z.string().optional().describe('GraphQL endpoint path (default: /content/graphql/global/endpoint.gql)'),
+  }).passthrough(),
+};
+
 // ─── Content Fragments ────────────────────────────────
 const contentFragmentSchemas = {
   getContentFragment: z.object({
@@ -252,6 +339,8 @@ const contentFragmentSchemas = {
     field: z.string().optional().describe('mergeJsonField: name of the field that holds a JSON-encoded string to patch'),
     jsonPointer: z.string().optional().describe('mergeJsonField: RFC-6901 pointer to the object to merge into (e.g. "/0/content/0/value"); default "" = field root'),
     merge: z.record(z.unknown()).optional().describe('mergeJsonField: keys to upsert into the resolved object (deep-merged; existing keys overwritten, untouched keys preserved)'),
+    etag: z.string().optional().describe('ETag from a prior getContentFragment call. When provided, sends If-Match header — returns ETAG_MISMATCH error if the fragment changed since fetch. Omit to skip conflict detection (last-write-wins). Applies to update and delete actions.'),
+    dryRun: z.boolean().optional().describe('When true and action is "delete": validates the fragment exists and returns what would be deleted without making any changes. Default: false.'),
   }).passthrough(),
   manageContentFragmentVariation: z.object({
     action: z.enum(['create', 'update', 'delete']).describe('Action to perform'),
@@ -295,6 +384,61 @@ const experienceFragmentSchemas = {
   }).passthrough(),
 };
 
+// ─── Launches ─────────────────────────────────────────
+const launchSchemas = {
+  listPageLaunches: z.object({}).passthrough(),
+  createPageLaunch: z.object({
+    sourcePaths: z.array(z.string()).describe('One or more source page paths to include in the launch'),
+    title: z.string().describe('Launch title'),
+    liveDate: z.string().optional().describe('Optional ISO 8601 date/time for scheduled auto-promotion (e.g., "2026-09-01T09:00:00.000Z")'),
+  }).passthrough(),
+  getPageLaunch: z.object({
+    launchId: z.string().describe('Launch ID (leaf segment of the launch path)'),
+  }).passthrough(),
+  editPageLaunchSources: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch (e.g., /content/launches/2026/09/01/my-launch)'),
+    addPaths: z.array(z.string()).optional().describe('Page paths to add to the launch'),
+    removePaths: z.array(z.string()).optional().describe('Page paths to remove from the launch'),
+  }).passthrough(),
+  copyPageToLaunch: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch'),
+    pagePath: z.string().describe('Page path to copy into the launch'),
+  }).passthrough(),
+  promotePageLaunch: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch to promote'),
+    pagePaths: z.array(z.string()).optional().describe('Specific page paths to promote; omit to promote all pages'),
+  }).passthrough(),
+  deletePageLaunch: z.object({
+    launchPath: z.string().describe('Full JCR path to the launch to permanently delete'),
+  }).passthrough(),
+  createContentFragmentLaunch: z.object({
+    fragmentUUIDs: z.array(z.string()).describe('UUIDs of content fragments to include in the launch'),
+    title: z.string().describe('Launch title'),
+    pollIntervalMs: z.number().optional().describe('Polling interval in milliseconds while waiting for launch to be ready (default: 2000)'),
+    maxPollAttempts: z.number().optional().describe('Maximum polling attempts before returning (default: 15)'),
+  }).passthrough(),
+  createContentFragmentLaunchWithLiveDate: z.object({
+    fragmentUUIDs: z.array(z.string()).describe('UUIDs of content fragments to include in the launch'),
+    title: z.string().describe('Launch title'),
+    liveDate: z.string().describe('ISO 8601 date/time for scheduled auto-promotion (e.g., "2026-09-01T09:00:00.000Z")'),
+    pollIntervalMs: z.number().optional().describe('Polling interval in milliseconds (default: 2000)'),
+    maxPollAttempts: z.number().optional().describe('Maximum polling attempts (default: 15)'),
+  }).passthrough(),
+  getContentFragmentLaunch: z.object({
+    launchId: z.string().describe('CF launch ID returned by createContentFragmentLaunch'),
+  }).passthrough(),
+  promoteContentFragmentLaunch: z.object({
+    launchId: z.string().describe('CF launch ID to promote'),
+    etag: z.string().describe('ETag value from getContentFragmentLaunch — required for optimistic concurrency'),
+  }).passthrough(),
+  editContentFragmentLaunchSources: z.object({
+    launchId: z.string().describe('CF launch ID'),
+    etag: z.string().describe('ETag value from getContentFragmentLaunch — required for optimistic concurrency'),
+    addUUIDs: z.array(z.string()).optional().describe('Fragment UUIDs to add to the launch'),
+    removeUUIDs: z.array(z.string()).optional().describe('Fragment UUIDs to remove from the launch'),
+  }).passthrough(),
+};
+
 // ─── Combined Schemas ─────────────────────────────────
 export const toolSchemas = {
   ...contentSchemas,
@@ -305,8 +449,10 @@ export const toolSchemas = {
   ...searchSchemas,
   ...templateSchemas,
   ...workflowSchemas,
+  ...contentFragmentModelSchemas,
   ...contentFragmentSchemas,
   ...experienceFragmentSchemas,
+  ...launchSchemas,
 } as const;
 
 export type ToolName = keyof typeof toolSchemas;
@@ -328,18 +474,18 @@ export const toolDescriptions: Record<ToolName, string> = {
   getPageProperties: 'Get page properties',
   searchContent: 'Structured content search with filters (type, property values, path scope, fulltext). More flexible than executeJCRQuery. Use for finding nodes by property values or content type.',
   executeJCRQuery: 'Execute fulltext search on cq:Page nodes under /content. Uses QueryBuilder internally, NOT raw JCR-SQL2. For structured property-based queries, use searchContent instead.',
-  getAssetMetadata: 'Get DAM asset metadata including title, description, dimensions, format, tags, and custom properties. Path must be under /content/dam.',
+  getAssetMetadata: 'Get DAM asset metadata including title, description, dimensions, format, tags, and custom properties. Path must be under /content/dam. Response includes an "etag" field — pass it to updateAsset to enable conflict detection.',
   enhancedPageSearch: 'Intelligent page search with comprehensive fallback strategies and cross-section search',
   createPage: 'Create a new page in AEM. The resourceType will be automatically extracted from the template structure if not provided.',
-  deletePage: 'Delete a page from AEM',
+  deletePage: 'Delete a page from AEM. Use dryRun: true to preview what would be deleted without making changes.',
   createComponent: 'Create a component at a specific JCR path (you must know the exact container path). For automatic container detection and cq:template application, use addComponent instead.',
   addComponent: 'Add a component to a page with automatic parsys/container detection and cq:template application. Preferred over createComponent for most use cases.',
-  deleteComponent: 'Delete a component from AEM',
+  deleteComponent: 'Delete a component from AEM. Use dryRun: true to preview what would be deleted without making changes.',
   unpublishContent: 'Unpublish content from the publish environment',
   activatePage: 'Publish a page immediately via direct replication (synchronous). For approval-based publishing workflows, use startWorkflow with the request_for_activation model.',
   deactivatePage: 'Deactivate (unpublish) a single page',
-  updateAsset: 'Update an existing asset in AEM DAM',
-  deleteAsset: 'Delete an asset from AEM DAM',
+  updateAsset: 'Update an existing asset in AEM DAM. Pass the "etag" from getAssetMetadata to enable conflict detection (returns ETAG_MISMATCH if the asset changed since fetch).',
+  deleteAsset: 'Delete an asset from AEM DAM. Use dryRun: true to preview what would be deleted without making changes.',
   getTemplates: 'Get available page templates',
   getTemplateStructure: 'Get detailed structure of a specific template',
   getComponents: 'Get all components from the configured component root path (projectRoot1) or a specified path. Shows component name, title, description, resource type, and other metadata.',
@@ -357,12 +503,32 @@ export const toolDescriptions: Record<ToolName, string> = {
   getWorkItemRoutes: 'Get available routes for a work item (to see what steps are available)',
   getContentFragment: 'Get a content fragment with all fields, variations, and metadata',
   listContentFragments: 'List content fragments under a path with optional model filter',
-  manageContentFragment: 'Create, update, or delete a content fragment, or merge keys into a JSON-encoded-string field (action "mergeJsonField"). mergeJsonField reads the current blob, deep-merges your keys at an optional RFC-6901 jsonPointer, and writes it back server-side — use it to upsert a few keys into a field that stores a whole key→value map as one JSON string, without round-tripping the entire blob. Use action param to specify operation.',
+  manageContentFragment: 'Create, update, or delete a content fragment, or merge keys into a JSON-encoded-string field (action "mergeJsonField"). For update/delete, pass the "etag" from getContentFragment to enable conflict detection (returns ETAG_MISMATCH if CF changed since fetch — AEMaaCS only; on AEM 6.5 the If-Match header is accepted but silently ignored by Sling POST). For delete, use dryRun: true to preview without changes. mergeJsonField reads the current blob, deep-merges your keys at an optional RFC-6901 jsonPointer, and writes it back server-side.',
   manageContentFragmentVariation: 'Create, update, or delete a variation within a content fragment',
+  listContentFragmentModels: 'List all CF models under a configuration path. Filter by name substring, status (enabled/disabled), or folder. Returns model path, title, field count, and last modified date.',
+  getContentFragmentModelSchema: 'Get the full field schema for a CF model — field names, types (single-line-text, multi-line-text, number, boolean, date-time, enumeration, content-reference, fragment-reference, json), required flag, multi-value flag, and constraints. Use this before creating fragments to discover required fields.',
+  createContentFragmentModel: 'Create a new CF model with field definitions. Use dryRun=true to validate field types and names without persisting. Supports all AEM field types.',
+  updateContentFragmentModel: 'Add, remove, or modify fields on an existing CF model. Use addFields to append new fields, removeFields with field names to drop, updateFields to modify existing field properties.',
+  deleteContentFragmentModel: 'Delete a CF model. Blocked if any fragments still reference the model unless force=true is passed.',
+  batchManageContentFragmentModels: 'Copy, patch, or delete multiple CF models in one call. Use continueOnError=true (default) to process all even if some fail. Use validateFirst=true to check all operations before executing any.',
+  listContentFragmentTemplates: 'List all templates defined under a CF model path.',
+  graphqlIntrospection: 'Execute a GraphQL __schema introspection query against the AEM GraphQL endpoint. Returns all content types, available query fields, and field types. Useful for discovering fragment models exposed via headless GraphQL.',
   getExperienceFragment: 'Get an experience fragment with all variations, components, and metadata',
   listExperienceFragments: 'List experience fragments under a path with optional template filter',
   manageExperienceFragment: 'Create, update, or delete an experience fragment. Auto-creates master variation on create.',
   manageExperienceFragmentVariation: 'Create, update, or delete a variation within an experience fragment',
+  listPageLaunches: 'List all page launches sorted by creation date (newest first). Returns launch ID, title, source pages, live date, status, and author.',
+  createPageLaunch: 'Create a new page launch from one or more source page paths. Optionally schedule auto-promotion with liveDate (ISO 8601). Returns the launch ID and JCR path.',
+  getPageLaunch: 'Get details of a page launch by ID: source pages, launch copies, live date, and status.',
+  editPageLaunchSources: 'Add or remove pages from an existing page launch. Provide addPaths and/or removePaths.',
+  copyPageToLaunch: 'Convenience: add a single page to an existing launch and return the expected launch copy path.',
+  promotePageLaunch: 'Promote a page launch to production. Optionally promote only a subset of pages; omit pagePaths to promote all.',
+  deletePageLaunch: 'Permanently delete a page launch and all its launch copies.',
+  createContentFragmentLaunch: 'Create a CF launch from fragment UUIDs (AEMaaCS only). Polls until the launch is ready. Returns launchId, status, and poll attempt count.',
+  createContentFragmentLaunchWithLiveDate: 'Create a CF launch with a scheduled auto-promotion date (AEMaaCS only). Polls until ready. Returns launchId, liveDate, and status.',
+  getContentFragmentLaunch: 'Get CF launch details by ID (AEMaaCS only). Returns ETag required for subsequent mutations (promote, edit sources).',
+  promoteContentFragmentLaunch: 'Merge a CF launch back to production (AEMaaCS only). Requires the ETag from getContentFragmentLaunch for optimistic concurrency.',
+  editContentFragmentLaunchSources: 'Add or remove fragments from an existing CF launch (AEMaaCS only). Requires ETag from getContentFragmentLaunch.',
 };
 
 /**
@@ -467,9 +633,32 @@ export const toolAnnotations: Record<string, { group: string; readOnly: boolean;
   listContentFragments: { group: 'fragments-content', readOnly: true, complexity: 'low' },
   manageContentFragment: { group: 'fragments-content', readOnly: false, complexity: 'medium' },
   manageContentFragmentVariation: { group: 'fragments-content', readOnly: false, complexity: 'medium' },
+  // CF Models
+  listContentFragmentModels: { group: 'fragments-models', readOnly: true, complexity: 'low' },
+  getContentFragmentModelSchema: { group: 'fragments-models', readOnly: true, complexity: 'low' },
+  createContentFragmentModel: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  updateContentFragmentModel: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  deleteContentFragmentModel: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  batchManageContentFragmentModels: { group: 'fragments-models', readOnly: false, complexity: 'high' },
+  listContentFragmentTemplates: { group: 'fragments-models', readOnly: true, complexity: 'low' },
+  graphqlIntrospection: { group: 'fragments-models', readOnly: true, complexity: 'medium' },
   // Experience Fragments
   getExperienceFragment: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
   listExperienceFragments: { group: 'fragments-experience', readOnly: true, complexity: 'low' },
   manageExperienceFragment: { group: 'fragments-experience', readOnly: false, complexity: 'medium' },
   manageExperienceFragmentVariation: { group: 'fragments-experience', readOnly: false, complexity: 'medium' },
+  // Page Launches
+  listPageLaunches: { group: 'launches', readOnly: true, complexity: 'low' },
+  createPageLaunch: { group: 'launches', readOnly: false, complexity: 'medium' },
+  getPageLaunch: { group: 'launches', readOnly: true, complexity: 'low' },
+  editPageLaunchSources: { group: 'launches', readOnly: false, complexity: 'medium' },
+  copyPageToLaunch: { group: 'launches', readOnly: false, complexity: 'medium' },
+  promotePageLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  deletePageLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  // CF Launches (AEMaaCS only)
+  createContentFragmentLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  createContentFragmentLaunchWithLiveDate: { group: 'launches', readOnly: false, complexity: 'high' },
+  getContentFragmentLaunch: { group: 'launches', readOnly: true, complexity: 'medium' },
+  promoteContentFragmentLaunch: { group: 'launches', readOnly: false, complexity: 'high' },
+  editContentFragmentLaunchSources: { group: 'launches', readOnly: false, complexity: 'high' },
 };
