@@ -211,8 +211,18 @@ export class ContentFragmentManager {
         formData.append('./jcr:primaryType', 'dam:Asset');
         formData.append('./jcr:content/jcr:primaryType', 'dam:AssetContent');
         formData.append('./jcr:content/jcr:title', title);
+        formData.append('./jcr:content/contentFragment', 'true');
+        formData.append('./jcr:content/contentFragment@TypeHint', 'Boolean');
+        formData.append('./jcr:content/cq:model', model);
+        formData.append('./jcr:content/metadata/jcr:primaryType', 'nt:unstructured');
+        formData.append('./jcr:content/metadata/dc:title', title);
+        if (description) formData.append('./jcr:content/metadata/dc:description', description);
+        formData.append('./jcr:content/renditions/jcr:primaryType', 'nt:folder');
+        formData.append('./jcr:content/related/jcr:primaryType', 'nt:unstructured');
+        formData.append('./jcr:content/indexedData/jcr:primaryType', 'nt:unstructured');
         formData.append('./jcr:content/data/jcr:primaryType', 'nt:unstructured');
         formData.append('./jcr:content/data/cq:model', model);
+        formData.append('./jcr:content/data/master/jcr:primaryType', 'nt:unstructured');
         if (description) formData.append('./jcr:content/data/description', description);
         if (fields) {
           for (const [key, value] of Object.entries(fields)) {
