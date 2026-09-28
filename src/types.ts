@@ -7,6 +7,9 @@ export type CliParams = {
   mcpPort?: number;
   transport?: 'http' | 'stdio';
   instances?: string;
+  cert?: string;
+  key?: string;
+  ca?: string;
 };
 
 export type InstanceConfig = {

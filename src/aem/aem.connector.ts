@@ -2,6 +2,7 @@ import { AEMConfig, getAEMConfig, isValidContentPath, isValidLocale } from './ae
 import { AEM_ERROR_CODES, createAEMError, createSuccessResponse, handleAEMHttpError, safeExecute } from './aem.errors.js';
 import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
+import { assertCertHosts, loadCertMaterial } from './aem.cert-fetch.js';
 import { filterNodeTree, filterProperties } from './aem.filter.js';
 import { ContentFragmentManager } from './aem.content-fragments.js';
 import { ExperienceFragmentManager } from './aem.experience-fragments.js';
@@ -44,10 +45,13 @@ export class AEMConnector {
     this.config = this.loadConfig(params);
     this.aemConfig = getAEMConfig({});
     this.isAEMaaCS = this.isConfigAEMaaCS();
+    const cert = loadCertMaterial(params);
+    assertCertHosts(cert, [{ label: '--host', host: this.config.aem.host }]);
     this.fetch = new AEMFetch({
       host: this.config.aem.host,
       auth: this.config.aem.auth,
       timeout: this.aemConfig.queries.timeoutMs,
+      cert,
     });
     this.contentFragments = new ContentFragmentManager(this.fetch, this.isAEMaaCS);
     this.experienceFragments = new ExperienceFragmentManager(this.fetch, this.config.aem.host);

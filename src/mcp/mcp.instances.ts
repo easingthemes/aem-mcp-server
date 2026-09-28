@@ -1,6 +1,7 @@
 import { MCPRequestHandler } from './mcp.aem-handler.js';
 import { CliParams, InstanceConfig } from '../types.js';
 import { LOGGER } from '../utils/logger.js';
+import { assertCertHosts, loadCertMaterial } from '../aem/aem.cert-fetch.js';
 
 /**
  * Registry of named AEM instances. Each instance has its own MCPRequestHandler
@@ -16,6 +17,12 @@ export class InstanceRegistry {
   constructor(cliParams: CliParams) {
     const instances = this.parseInstances(cliParams);
 
+    // Checked across every instance up front so a mixed list names all offenders at once.
+    assertCertHosts(
+      loadCertMaterial(cliParams),
+      instances.map((inst) => ({ label: cliParams.instances ? inst.name : '--host', host: inst.host })),
+    );
+
     for (const inst of instances) {
       const handlerParams: CliParams = {
         host: inst.host,
@@ -23,6 +30,9 @@ export class InstanceRegistry {
         pass: inst.pass,
         id: inst.id,
         secret: inst.secret,
+        cert: cliParams.cert,
+        key: cliParams.key,
+        ca: cliParams.ca,
       };
       this.handlers.set(inst.name, new MCPRequestHandler(handlerParams));
       LOGGER.log(`Registered AEM instance: "${inst.name}" → ${inst.host}`);

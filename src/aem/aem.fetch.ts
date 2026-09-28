@@ -1,5 +1,6 @@
 import { getAccessToken } from './aem.auth.js';
 import { LOGGER } from '../utils/logger.js';
+import { makeCertFetch, type CertMaterial, type FetchInstance } from './aem.cert-fetch.js';
 
 export type AEMBasicAuth = {
   username: string;
@@ -28,9 +29,8 @@ export type AEMFetchConfig = {
   host: string;
   auth: AEMAuth;
   timeout?: number;
+  cert?: CertMaterial | null;
 }
-
-type FetchInstance = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 
 export class AEMFetch {
   private fetch: FetchInstance | null;
@@ -51,13 +51,14 @@ export class AEMFetch {
    */
   async init() {
     this.token = await this.getAuthToken(this.config.auth);
-    this.fetch = this.getFetchInstance();
+    const transport: FetchInstance = this.config.cert ? makeCertFetch(this.config.cert) : fetch;
+    this.fetch = this.getFetchInstance(transport);
   }
 
   /**
    * Returns a fetch instance with proper headers for AEM authentication.
    */
-  private getFetchInstance(): FetchInstance {
+  private getFetchInstance(transport: FetchInstance): FetchInstance {
     return (input: RequestInfo, init: RequestInit = {}): Promise<Response> => {
       // Work with existing headers - create new Headers object to avoid mutating the original
       const headers = init.headers instanceof Headers 
@@ -85,7 +86,7 @@ export class AEMFetch {
       
       // Create new options object with our headers, preserving other init properties
       const { headers: _, ...initWithoutHeaders } = init;
-      return fetch(input, { ...initWithoutHeaders, headers });
+      return transport(input, { ...initWithoutHeaders, headers });
     }
   }
 

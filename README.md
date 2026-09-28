@@ -107,6 +107,12 @@ Options:
                            [string] [choices: "http", "stdio"] [default: "http"]
   -I, --instances  Named AEM instances: "local:http://localhost:4502:admin:admin
                    ,qa:https://qa.example.com:user:pass"  [string] [default: ""]
+  -C, --cert       Client certificate PEM for mTLS to AEM (env AEM_CERT_PATH).
+                   Requires --key                                       [string]
+  -k, --key        Client private key PEM (env AEM_KEY_PATH). Passphrase via env
+                   AEM_KEY_PASSPHRASE only                              [string]
+      --ca         CA bundle PEM for the AEM server certificate (env
+                   AEM_CA_PATH)                                         [string]
   -h, --help       Show help                                           [boolean]
 ```
 
@@ -119,6 +125,59 @@ Options:
 aem-mcp --instances "author:http://localhost:4502:admin:admin,publish:http://localhost:4503:admin:admin"
 ```
 All tools will get an `instance` parameter to target a specific instance.
+
+### Client certificates (mTLS)
+
+Use this when a Dispatcher or CDN in front of AEM requires a client certificate
+(`SSLVerifyClient require`). Without one, every tool fails at the TLS handshake before AEM is
+reached.
+
+| Parameter | CLI flag | Env var |
+|---|---|---|
+| Client certificate (PEM) | `--cert` / `-C` | `AEM_CERT_PATH` |
+| Client private key (PEM) | `--key` / `-k` | `AEM_KEY_PATH` |
+| CA bundle (PEM), only if the AEM server certificate is not publicly trusted | `--ca` | `AEM_CA_PATH` |
+| Key passphrase, only for an encrypted key | — (env only, so it never shows in the process list) | `AEM_KEY_PASSPHRASE` |
+
+**The certificate is not an authentication mode.** It secures the connection from this server to
+AEM; AEM still authenticates the user. Pass `-u/-p` (or rely on the `admin:admin` default) or
+`-i/-s` alongside it, exactly as without a certificate.
+
+```json
+{
+  "mcpServers": {
+    "AEM": {
+      "command": "npx",
+      "args": ["-y", "aem-mcp-server", "-t", "stdio",
+               "-H", "https://aem.example.com",
+               "-u", "svc-user", "-p", "${AEM_PASSWORD}",
+               "--cert", "/etc/certs/client.pem",
+               "--key", "/etc/certs/client.key"],
+      "env": { "AEM_KEY_PASSPHRASE": "${AEM_KEY_PASSPHRASE}" }
+    }
+  }
+}
+```
+
+It works the same with both transports (`stdio` and `http`) and applies to every instance in
+`--instances`.
+
+The server refuses to start if the configuration cannot work: `--cert` without `--key` (or the
+reverse), `--ca` alone, an unreadable or non-PEM file, a mismatched keypair, an encrypted key
+without `AEM_KEY_PASSPHRASE`, or any host (`--host` or an `--instances` entry) that is not
+`https://`. Loopback hosts (`localhost`, `127.0.0.1`, `[::1]`) are exempt from the `https://` check.
+
+Know these limits:
+
+- **Scope.** The certificate protects only the outbound connection to AEM. It does **not**
+  protect this server's own `/mcp` endpoint.
+- **Rotation needs a restart.** Certificates are read once at startup; replacing the files on disk
+  has no effect until the process restarts.
+- **Redirects.** In certificate mode, one redirect hop is followed; longer chains are not.
+- **Revocation.** No CRL/OCSP checking — handle revocation at the Dispatcher/CDN.
+- **No "mTLS enabled" indicator.** Nothing is logged and `/health` is unchanged. A process that
+  started has valid material and acceptable hosts; a certificate AEM rejects fails loudly on the
+  first tool call.
 
 ---
 
@@ -136,7 +195,7 @@ All tools will get an `instance` parameter to target a specific instance.
 - **Text & Image Extraction**: Extract all text and images from pages, including fragments
 - **Template & Structure Discovery**: List templates, analyze page/component structure
 - **Multi-instance**: Connect to multiple AEM instances simultaneously; tools and resources are instance-aware
-- **Security**: Basic auth and OAuth S2S, environment-based config, safe operation defaults
+- **Security**: Basic auth and OAuth S2S, optional client certificates (mTLS) to AEM, environment-based config, safe operation defaults
 
 ---
 
