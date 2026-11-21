@@ -4,7 +4,9 @@ import { CliParams } from '../types.js';
 import { AEMAuth, AEMFetch } from './aem.fetch.js';
 import { filterNodeTree, filterProperties } from './aem.filter.js';
 import { ContentFragmentManager } from './aem.content-fragments.js';
+import { ContentFragmentModelManager } from './aem.cf-models.js';
 import { ExperienceFragmentManager } from './aem.experience-fragments.js';
+import { LaunchManager } from './aem.launches.js';
 import { LOGGER } from '../utils/logger.js';
 
 export interface AEMConnectorConfig {
@@ -37,7 +39,9 @@ export class AEMConnector {
   aemConfig: AEMConfig;
   private readonly fetch: AEMFetch;
   readonly contentFragments: ContentFragmentManager;
+  readonly cfModels: ContentFragmentModelManager;
   readonly experienceFragments: ExperienceFragmentManager;
+  readonly launches: LaunchManager;
 
   constructor(params: CliParams) {
     this.isInitialized = false;
@@ -50,7 +54,9 @@ export class AEMConnector {
       timeout: this.aemConfig.queries.timeoutMs,
     });
     this.contentFragments = new ContentFragmentManager(this.fetch, this.isAEMaaCS);
+    this.cfModels = new ContentFragmentModelManager(this.fetch, this.isAEMaaCS);
     this.experienceFragments = new ExperienceFragmentManager(this.fetch, this.config.aem.host);
+    this.launches = new LaunchManager(this.fetch, this.config.aem.host, this.isAEMaaCS);
   }
 
   async init() {
@@ -774,11 +780,12 @@ export class AEMConnector {
   async getAssetMetadata(assetPath: string): Promise<object> {
     return safeExecute<object>(async () => {
       const url = `${assetPath}.json`;
-      const data = await this.fetch.get(url);
+      const { body: data, etag } = await this.fetch.getWithEtag(url);
       const metadata = data['jcr:content']?.metadata || {};
       return createSuccessResponse({
         assetPath,
         metadata,
+        etag,
         fullData: data,
       }, 'getAssetMetadata');
     }, 'getAssetMetadata');
@@ -791,11 +798,27 @@ export class AEMConnector {
 
   async deletePage(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { pagePath } = request;
+      const { pagePath, dryRun } = request;
       if (!isValidContentPath(pagePath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid page path: ${String(pagePath)}`, { pagePath });
       }
-      // Try 'DELETE' first
+
+      if (dryRun) {
+        let exists = false;
+        try {
+          await this.fetch.get(`${pagePath}.json`);
+          exists = true;
+        } catch (err: any) {
+          if (err?.status !== 404 && err?.response?.status !== 404) throw err;
+        }
+        return createSuccessResponse({
+          dryRun: true,
+          path: pagePath,
+          wouldDelete: exists,
+          message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+        }, 'deletePage');
+      }
+
       let deleted = false;
       try {
         await this.fetch.delete(pagePath);
@@ -1652,26 +1675,41 @@ export class AEMConnector {
 
   async deleteComponent(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { componentPath } = request;
+      const { componentPath, dryRun } = request;
       if (!isValidContentPath(componentPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid component path: ${String(componentPath)}`, { componentPath });
       }
+
+      if (dryRun) {
+        let exists = false;
+        try {
+          await this.fetch.get(`${componentPath}.json`);
+          exists = true;
+        } catch (err: any) {
+          if (err?.status !== 404 && err?.response?.status !== 404) throw err;
+        }
+        return createSuccessResponse({
+          dryRun: true,
+          path: componentPath,
+          wouldDelete: exists,
+          message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+        }, 'deleteComponent');
+      }
+
       let deleted = false;
-      // Use POST with :operation=delete as primary method (works better with SlingPostServlet)
       try {
         const formData = new URLSearchParams();
         formData.append(':operation', 'delete');
         await this.fetch.post(componentPath, formData);
         deleted = true;
       } catch (err: any) {
-        // If POST fails, try DELETE method as fallback
         if (err?.status === 405 || err?.response?.status === 405 || err?.status === 403 || err?.response?.status === 403) {
           try {
             await this.fetch.delete(componentPath);
             deleted = true;
           } catch (deleteErr: any) {
             LOGGER.error('Both POST and DELETE failed:', err.response?.status, deleteErr.response?.status);
-            throw err; // Throw original POST error
+            throw err;
           }
         } else {
           LOGGER.error('DELETE failed:', err.response?.status, err.response?.data);
@@ -1824,27 +1862,25 @@ export class AEMConnector {
 
   async updateAsset(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { assetPath, metadata, fileContent, mimeType } = request;
+      const { assetPath, metadata, fileContent, mimeType, etag } = request;
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
       const formData = new URLSearchParams();
-      // Update file content if provided
       if (fileContent) {
         formData.append('file', fileContent);
         if (mimeType) {
           formData.append('jcr:content/jcr:mimeType', mimeType);
         }
       }
-      // Update metadata if provided
       if (metadata && typeof metadata === 'object') {
         Object.entries(metadata).forEach(([key, value]) => {
           formData.append(`jcr:content/metadata/${key}`, String(value));
         });
       }
+      const postOptions: RequestInit = etag ? { headers: new Headers({ 'If-Match': etag }) } : {};
       try {
-        const updateResponse = await this.fetch.post(assetPath, formData);
-        // Verify the update
+        const updateResponse = await this.fetch.post(assetPath, formData, postOptions);
         const assetData = await this.fetch.get(`${assetPath}.json`);
         return createSuccessResponse({
           success: true,
@@ -1862,10 +1898,27 @@ export class AEMConnector {
 
   async deleteAsset(request: any): Promise<object> {
     return safeExecute<object>(async () => {
-      const { assetPath, force = false } = request;
+      const { assetPath, force = false, dryRun } = request;
       if (!isValidContentPath(assetPath, this.aemConfig)) {
         throw createAEMError(AEM_ERROR_CODES.INVALID_PARAMETERS, `Invalid asset path: ${String(assetPath)}`, { assetPath });
       }
+
+      if (dryRun) {
+        let exists = false;
+        try {
+          await this.fetch.get(`${assetPath}.json`);
+          exists = true;
+        } catch (err: any) {
+          if (err?.status !== 404 && err?.response?.status !== 404) throw err;
+        }
+        return createSuccessResponse({
+          dryRun: true,
+          path: assetPath,
+          wouldDelete: exists,
+          message: 'Dry-run: no changes made. Set dryRun: false to execute.',
+        }, 'deleteAsset');
+      }
+
       await this.fetch.delete(assetPath);
       return createSuccessResponse({
         success: true,
@@ -3673,6 +3726,32 @@ export class AEMConnector {
     }, 'getWorkItemRoutes');
   }
 
+  // ─── CF Models (delegated) ───────────────────────────
+  async listContentFragmentModels(params: any): Promise<object> {
+    return this.cfModels.listContentFragmentModels(params);
+  }
+  async getContentFragmentModelSchema(params: any): Promise<object> {
+    return this.cfModels.getContentFragmentModelSchema(params);
+  }
+  async createContentFragmentModel(params: any): Promise<object> {
+    return this.cfModels.createContentFragmentModel(params);
+  }
+  async updateContentFragmentModel(params: any): Promise<object> {
+    return this.cfModels.updateContentFragmentModel(params);
+  }
+  async deleteContentFragmentModel(params: any): Promise<object> {
+    return this.cfModels.deleteContentFragmentModel(params);
+  }
+  async batchManageContentFragmentModels(params: any): Promise<object> {
+    return this.cfModels.batchManageContentFragmentModels(params);
+  }
+  async listContentFragmentTemplates(params: any): Promise<object> {
+    return this.cfModels.listContentFragmentTemplates(params);
+  }
+  async graphqlIntrospection(params: any): Promise<object> {
+    return this.cfModels.graphqlIntrospection(params);
+  }
+
   // ─── Content Fragments (delegated) ───────────────────
   async getContentFragment(path: string): Promise<object> {
     return this.contentFragments.getContentFragment(path);
@@ -3697,5 +3776,55 @@ export class AEMConnector {
   }
   async manageExperienceFragmentVariation(params: any): Promise<object> {
     return this.experienceFragments.manageExperienceFragmentVariation(params);
+  }
+
+  // ─── Launch Delegates ─────────────────────────────────
+
+  async listPageLaunches(): Promise<object> {
+    return this.launches.listPageLaunches();
+  }
+
+  async createPageLaunch(params: { sourcePaths: string[]; title: string; liveDate?: string }): Promise<object> {
+    return this.launches.createPageLaunch(params);
+  }
+
+  async getPageLaunch(params: { launchId: string }): Promise<object> {
+    return this.launches.getPageLaunch(params);
+  }
+
+  async editPageLaunchSources(params: { launchPath: string; addPaths?: string[]; removePaths?: string[] }): Promise<object> {
+    return this.launches.editPageLaunchSources(params);
+  }
+
+  async copyPageToLaunch(params: { launchPath: string; pagePath: string }): Promise<object> {
+    return this.launches.copyPageToLaunch(params);
+  }
+
+  async promotePageLaunch(params: { launchPath: string; pagePaths?: string[] }): Promise<object> {
+    return this.launches.promotePageLaunch(params);
+  }
+
+  async deletePageLaunch(params: { launchPath: string }): Promise<object> {
+    return this.launches.deletePageLaunch(params);
+  }
+
+  async createContentFragmentLaunch(params: { fragmentUUIDs: string[]; title: string; pollIntervalMs?: number; maxPollAttempts?: number }): Promise<object> {
+    return this.launches.createContentFragmentLaunch(params);
+  }
+
+  async createContentFragmentLaunchWithLiveDate(params: { fragmentUUIDs: string[]; title: string; liveDate: string; pollIntervalMs?: number; maxPollAttempts?: number }): Promise<object> {
+    return this.launches.createContentFragmentLaunchWithLiveDate(params);
+  }
+
+  async getContentFragmentLaunch(params: { launchId: string }): Promise<object> {
+    return this.launches.getContentFragmentLaunch(params);
+  }
+
+  async promoteContentFragmentLaunch(params: { launchId: string; etag: string }): Promise<object> {
+    return this.launches.promoteContentFragmentLaunch(params);
+  }
+
+  async editContentFragmentLaunchSources(params: { launchId: string; etag: string; addUUIDs?: string[]; removeUUIDs?: string[] }): Promise<object> {
+    return this.launches.editContentFragmentLaunchSources(params);
   }
 }

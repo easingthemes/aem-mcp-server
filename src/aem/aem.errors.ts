@@ -45,6 +45,7 @@ export const AEM_ERROR_CODES = {
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
   SYSTEM_ERROR: 'SYSTEM_ERROR',
   RATE_LIMITED: 'RATE_LIMITED',
+  ETAG_MISMATCH: 'ETAG_MISMATCH',
 } as const;
 
 export function createAEMError(
@@ -68,6 +69,13 @@ export function handleAEMHttpError(error: any, operation: string): AEMOperationE
         return createAEMError(AEM_ERROR_CODES.INSUFFICIENT_PERMISSIONS, 'Insufficient permissions for this operation.', { status, data, operation });
       case 404:
         return createAEMError(AEM_ERROR_CODES.RESOURCE_NOT_FOUND, 'Resource not found in AEM.', { status, data, operation });
+      case 412:
+        return createAEMError(
+          AEM_ERROR_CODES.ETAG_MISMATCH,
+          'Resource was modified since last fetch. Re-fetch to get the current ETag, then retry.',
+          { status, data, operation },
+          false,
+        );
       case 429:
         const retryAfter = error.response.headers['retry-after'];
         return createAEMError(AEM_ERROR_CODES.RATE_LIMITED, 'Rate limit exceeded. Please try again later.', { status, data }, true, retryAfter ? parseInt(retryAfter) * 1000 : 60000);
@@ -154,6 +162,10 @@ const ERROR_SUGGESTIONS: Record<string, { suggestion: string; alternatives: stri
   CONNECTION_FAILED: {
     suggestion: 'AEM instance may not be running. Check the configured URL and port.',
     alternatives: [],
+  },
+  ETAG_MISMATCH: {
+    suggestion: 'Re-fetch the resource to get the current ETag, then retry the operation with the new ETag.',
+    alternatives: ['getContentFragment to re-fetch a CF and get its current ETag', 'getAssetMetadata to re-fetch an asset ETag'],
   },
 };
 
