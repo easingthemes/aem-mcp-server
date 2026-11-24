@@ -1,3 +1,11 @@
+## [1.7.2](https://github.com/easingthemes/aem-mcp-server/compare/v1.7.1...v1.7.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* **cf:** add missing JCR nodes when creating content fragments on AEM 6.5 ([fa2e227](https://github.com/easingthemes/aem-mcp-server/commit/fa2e227d1e28477d4736542048876b32f854ae01))
+* **deps:** update transitive dependencies to patch audit vulnerabilities ([81975ec](https://github.com/easingthemes/aem-mcp-server/commit/81975ec18c4db0dd807ac7f49ed191916ea5ccdb))
+
 ## [1.7.1](https://github.com/easingthemes/aem-mcp-server/compare/v1.7.0...v1.7.1) (2026-06-11)
 
 
