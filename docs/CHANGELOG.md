@@ -1,3 +1,10 @@
+## [1.7.3](https://github.com/easingthemes/aem-mcp-server/compare/v1.7.2...v1.7.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* **server:** require auth or local-only access for the HTTP MCP endpoint ([d7b8528](https://github.com/easingthemes/aem-mcp-server/commit/d7b852843a20d3a733f84479e844c28667120e15))
+
 ## [1.7.2](https://github.com/easingthemes/aem-mcp-server/compare/v1.7.1...v1.7.2) (2026-11-24)
 
 
