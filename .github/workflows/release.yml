@@ -12,13 +12,13 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        node-version: [ 20.x ]
+        node-version: [ 24.x ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix['node-version'] }}
       - name: Install dependencies
@@ -28,7 +28,7 @@ jobs:
       - name: Run Tests
         run: npm test --if-present
       - name: Release
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v8
         with:
           dry_run: false
           extra_plugins: |
