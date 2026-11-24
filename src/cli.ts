@@ -13,6 +13,10 @@ const argv = yargs(hideBin(process.argv)).options({
   id: { type: 'string', default: '', alias: 'i', describe: 'clientId' },
   secret: { type: 'string', default: '', alias: 's', describe: 'clientSecret' },
   mcpPort: { type: 'number', default: 8502, alias: 'm' },
+  mcpHost: {
+    type: 'string',
+    describe: 'Address to listen on. Default: 127.0.0.1, or all interfaces when MCP_USERNAME and MCP_PASSWORD are set',
+  },
   transport: {
     type: 'string',
     default: 'http' as const,
@@ -35,8 +39,8 @@ if (argv.help) {
   process.exit(0);
 }
 
-const { host, user, pass, mcpPort, id, secret, transport, instances } = argv;
-const params: CliParams = { host, user, pass, mcpPort, id, secret, instances };
+const { host, user, pass, mcpPort, mcpHost, id, secret, transport, instances } = argv;
+const params: CliParams = { host, user, pass, mcpPort, mcpHost, id, secret, instances };
 
 if (transport === 'stdio') {
   startStdio(params);

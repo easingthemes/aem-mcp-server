@@ -1,7 +1,7 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import { handleRequest } from '../mcp/mcp.server-handler.js';
-// import { useBasicAuth } from './app.auth.js';
+import { configuredCredentials, corsOriginAllowed, listenHost, refusal } from './app.guard.js';
 import { AEMConnector } from '../aem/aem.connector.js';
 import { config } from '../config.js';
 import { CliParams } from '../types.js';
@@ -10,15 +10,29 @@ import { LOGGER } from '../utils/logger.js';
 const createServer = (params: CliParams = {}) => {
   const app = express();
 
+  // Only pages served from this machine (e.g. a local MCP inspector) may read
+  // responses. `origin: '*'` let any website call /mcp with the AEM credentials.
   app.use(cors({
-    origin: '*', // Allow all origins - adjust as needed for production
+    origin: (origin, callback) => callback(null, corsOriginAllowed(origin)),
     exposedHeaders: ['Mcp-Session-Id']
   }));
-  app.use(express.json());
+
+  // Who may call this server at all: see app.guard.ts.
+  const credentials = configuredCredentials(config.MCP_USERNAME, config.MCP_PASSWORD);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const refused = refusal({
+      host: req.headers.host,
+      origin: req.headers.origin,
+      authorization: req.headers.authorization,
+      credentials,
+    });
+    if (!refused) return next();
+    if (refused.status === 401) res.set('WWW-Authenticate', 'Basic realm="aem-mcp"');
+    res.status(refused.status).json({ error: refused.error });
+  });
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
-  // useBasicAuth(app);
   const aemConnector = new AEMConnector(params);
 
   app.get('/health', async (req: Request, res: Response) => {
@@ -78,15 +92,22 @@ const createServer = (params: CliParams = {}) => {
 }
 
 export const startServer = (params: CliParams = {}) => {
-  const { mcpPort = 8502 } = params || {};
+  const { mcpPort = 8502, mcpHost } = params || {};
   const app = createServer(params);
-  app.listen(mcpPort, (error) => {
+  const credentials = configuredCredentials(config.MCP_USERNAME, config.MCP_PASSWORD);
+  const host = listenHost(mcpHost, credentials);
+  const onListening = (error?: Error) => {
     if (error) {
       LOGGER.error('Failed to start server:', error);
       process.exit(1);
     }
-    LOGGER.log(`0. AEM MCP Server listening on port ${mcpPort}`);
-  });
+    LOGGER.log(`0. AEM MCP Server listening on ${host ?? 'all interfaces'}, port ${mcpPort}`);
+    if (!credentials) {
+      LOGGER.log('   No MCP_USERNAME/MCP_PASSWORD set: only local requests are answered.');
+    }
+  };
+  if (host) app.listen(mcpPort, host, onListening);
+  else app.listen(mcpPort, onListening);
 };
 
 process.on('SIGINT', async () => {

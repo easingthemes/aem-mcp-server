@@ -5,6 +5,7 @@ export type CliParams = {
   id?: string;
   secret?: string;
   mcpPort?: number;
+  mcpHost?: string;
   transport?: 'http' | 'stdio';
   instances?: string;
 };
