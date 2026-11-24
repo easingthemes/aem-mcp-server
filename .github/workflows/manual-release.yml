@@ -24,7 +24,7 @@ env:
   GIT_COMMITTER_NAME: github-actions
   GIT_COMMITTER_EMAIL: github-actions@github.com
   CI: true
-  CONFIG_NODE_VERSION: '["20.x"]'
+  CONFIG_NODE_VERSION: '["24.x"]'
   CONFIG_OS: '["ubuntu-latest"]'
 # Main Job
 jobs:
@@ -50,9 +50,9 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Node.js ${{ matrix.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.NODE_VERSION }}
       - name: Commit trigger
@@ -67,7 +67,7 @@ jobs:
       - name: Run Tests
         run: npm test --if-present
       - name: Publish npm package
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v8
         with:
           dry_run: ${{ github.event.inputs.dryRun == 'true' }}
           extra_plugins: |
