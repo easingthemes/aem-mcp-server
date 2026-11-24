@@ -103,12 +103,22 @@ Options:
   -i, --id         clientId                               [string] [default: ""]
   -s, --secret     clientSecret                           [string] [default: ""]
   -m, --mcpPort                                         [number] [default: 8502]
+      --mcpHost    Address to listen on. Default: 127.0.0.1, or all interfaces
+                   when MCP_USERNAME and MCP_PASSWORD are set           [string]
   -t, --transport  Transport mode: http (default) or stdio
                            [string] [choices: "http", "stdio"] [default: "http"]
   -I, --instances  Named AEM instances: "local:http://localhost:4502:admin:admin
                    ,qa:https://qa.example.com:user:pass"  [string] [default: ""]
   -h, --help       Show help                                           [boolean]
 ```
+
+**Who can reach the MCP endpoint (HTTP transport):**
+- The HTTP server acts on AEM with the credentials you start it with, so treat `/mcp` like those credentials.
+- **Default (no `MCP_USERNAME`/`MCP_PASSWORD`):** the server listens on `127.0.0.1` only and answers only requests whose `Host` is `localhost`, `127.x.x.x` or `[::1]`. Requests with an `Origin` from another website are refused with `403`.
+- **Remote use requires credentials:** set `MCP_USERNAME` and `MCP_PASSWORD` to enable HTTP Basic auth on every request (including from localhost). The server then listens on all interfaces. There are no default credentials.
+- `--mcpHost` overrides the listen address. `--mcpHost 0.0.0.0` without credentials still refuses requests with a non-local `Host` header, so it does not make the server usable from other machines.
+- Wildcard CORS (`Access-Control-Allow-Origin: *`) was removed: only pages served from `localhost`/loopback (for example a local MCP inspector) may read responses.
+- The stdio transport is not affected by these settings.
 
 **Authentication:**
 - For **AEMaaCS**, use `clientId` and `clientSecret` for OAuth S2S authentication. [More info](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation).
